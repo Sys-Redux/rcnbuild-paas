@@ -1,0 +1,123 @@
+version: '3.8'
+
+# ===========================================
+# RCNbuild Local Development Infrastructure
+# ===========================================
+# Start with: docker-compose up -d
+# Stop with:  docker-compose down
+# Logs:       docker-compose logs -f [service]
+
+services:
+  # ===========================================
+  # PostgreSQL Database
+  # ===========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: rcnbuild-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rcnbuild}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-rcnbuild}
+    ports:
+      - "5433:5432"  # Host:Container - using 5433 since 5432 is occupied
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rcnbuild}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rcnbuild-network
+    restart: unless-stopped
+
+  # ===========================================
+  # Redis (Cache + Job Queue for Asynq)
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: rcnbuild-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rcnbuild-network
+    restart: unless-stopped
+
+  # ===========================================
+  # Traefik Reverse Proxy
+  # ===========================================
+  # Traefik dynamically routes requests to containers
+  # based on Docker labels. This enables:
+  # - Automatic HTTPS with Let's Encrypt
+  # - Dynamic routing: myapp.rcnbuild.dev → container
+  # - Zero-config service discovery
+  traefik:
+    image: traefik:v3.0
+    container_name: rcnbuild-traefik
+    command:
+      - "--api.insecure=true"                         # Enable dashboard (dev only!)
+      - "--providers.docker=true"                     # Read container labels
+      - "--providers.docker.exposedbydefault=false"   # Explicit opt-in
+      - "--providers.docker.network=rcnbuild-network" # Use our network
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--log.level=${TRAEFIK_LOG_LEVEL:-DEBUG}"
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "8082:8080"   # Dashboard - using 8082 since 8080 is occupied
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - rcnbuild-network
+    restart: unless-stopped
+
+  # ===========================================
+  # Local Docker Registry
+  # ===========================================
+  # Stores built container images locally during development.
+  # In production, you'd use Harbor, ECR, GCR, etc.
+  registry:
+    image: registry:2
+    container_name: rcnbuild-registry
+    ports:
+      - "5001:5000"  # Host:Container - using 5001 since 5000 is occupied
+    volumes:
+      - registry_data:/var/lib/registry
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"  # Allow image deletion
+    networks:
+      - rcnbuild-network
+    restart: unless-stopped
+
+# ===========================================
+# Networks
+# ===========================================
+# All services communicate over this bridge network.
+# User-deployed containers will also join this network
+# so Traefik can route to them.
+networks:
+  rcnbuild-network:
+    driver: bridge
+    name: rcnbuild-network
+
+# ===========================================
+# Volumes
+# ===========================================
+# Named volumes persist data between container restarts.
+# Delete with: docker-compose down -v
+volumes:
+  postgres_data:
+    name: rcnbuild-postgres-data
+  redis_data:
+    name: rcnbuild-redis-data
+  registry_data:
+    name: rcnbuild-registry-data
