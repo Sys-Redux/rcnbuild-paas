@@ -13,6 +13,57 @@ Deploys to Docker → Routes via Traefik → App live at app-name.rcnbuild.dev
 
 ---
 
+## Design Philosophy: Ownership Through Transparency
+
+RCNbuild is **the self-hosted Vercel alternative** — built for indie developers who want control over their infrastructure without sacrificing developer experience.
+
+### Core Principles
+
+**1. YOUR INFRASTRUCTURE**
+Deploy to any server you control. We don't want your hardware, just your trust. Users can run RCNbuild on a $5 VPS, a home lab, or enterprise infrastructure.
+
+**2. ZERO LOCK-IN**
+Everything we generate is standard Docker + Traefik. Users can export and leave anytime. No proprietary formats, no hidden configurations.
+
+**3. TRANSPARENT BY DEFAULT**
+Show every Dockerfile, every config, every decision. No black boxes. Users should be able to learn infrastructure by using the platform. Consider adding "Show Config" buttons throughout the UI.
+
+**4. SIMPLE UNTIL YOU NEED COMPLEX**
+One VPS runs the whole platform. Complexity (clustering, multi-region, etc.) is opt-in, not required. Optimize for single-server deployments first.
+
+**5. DEVELOPER-OWNED**
+Open source core with Open Core + Managed Cloud business model. Fork it, modify it, own it. The deployment pipeline is the user's code.
+
+### What We're NOT
+- ❌ Not trying to replace Kubernetes
+- ❌ Not targeting Fortune 500
+- ❌ Not competing on enterprise features
+- ❌ Not "serverless" — servers are good, actually
+
+### What We ARE
+- ✅ The best way to deploy to YOUR server
+- ✅ A learning tool disguised as a platform
+- ✅ The answer to "I want Vercel but cheaper and mine"
+- ✅ The last deployment tool indie developers need
+
+### How This Shapes Development Decisions
+
+| Decision | Vercel/Render Way | RCNbuild Way |
+|----------|-------------------|--------------|
+| Infrastructure | Their cloud only | Any SSH-accessible server |
+| Config visibility | Hidden | Exposed with "Show Config" |
+| Default scale | Multi-region | Single server |
+| Minimum viable setup | Managed service | One docker-compose.yml |
+| Target user | Teams with budget | Indie devs who want control |
+
+When making implementation decisions, always ask:
+1. Does this respect the user's ownership of their infrastructure?
+2. Is the configuration visible and exportable?
+3. Does this work on a single $5 VPS?
+4. Can the user understand what's happening?
+
+---
+
 ## Tech Stack (Strictly Follow)
 
 ### Backend

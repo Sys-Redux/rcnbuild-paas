@@ -18,7 +18,7 @@ YELLOW := \033[0;33m
 CYAN   := \033[0;36m
 RESET  := \033[0m
 
-.PHONY: help dev down logs ps api worker migrate-up migrate-down migrate-create migrate-status test lint build clean deps
+.PHONY: help dev down logs ps ngrok-url api worker migrate-up migrate-down migrate-create migrate-status test lint build clean deps
 
 # ===========================================
 # Help
@@ -28,10 +28,11 @@ help:
 	@echo "$(CYAN)RCNbuild Development Commands$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)Infrastructure:$(RESET)"
-	@echo "  $(GREEN)make dev$(RESET)              - Start all infrastructure services (PostgreSQL, Redis, Traefik, Registry)"
+	@echo "  $(GREEN)make dev$(RESET)              - Start all infrastructure services (PostgreSQL, Redis, Traefik, Registry, ngrok)"
 	@echo "  $(GREEN)make down$(RESET)             - Stop all infrastructure services"
 	@echo "  $(GREEN)make logs$(RESET)             - Tail logs from all services"
 	@echo "  $(GREEN)make ps$(RESET)               - Show running containers"
+	@echo "  $(GREEN)make ngrok-url$(RESET)        - Get the ngrok HTTPS URL for GitHub App callback"
 	@echo ""
 	@echo "$(YELLOW)Application:$(RESET)"
 	@echo "  $(GREEN)make api$(RESET)              - Run the API server (with hot reload if air is installed)"
@@ -52,12 +53,13 @@ help:
 	@echo "  $(GREEN)make clean$(RESET)            - Remove build artifacts"
 	@echo ""
 	@echo "$(YELLOW)Ports:$(RESET)"
-	@echo "  PostgreSQL:     localhost:5433"
+	@echo "  PostgreSQL:     localhost:5437"
 	@echo "  Redis:          localhost:6379"
-	@echo "  Traefik UI:     http://localhost:8082"
-	@echo "  Registry:       localhost:5001"
+	@echo "  Traefik UI:     http://localhost:8080"
+	@echo "  Registry:       localhost:5000"
+	@echo "  ngrok UI:       http://localhost:4040"
 	@echo "  API Server:     http://localhost:$(API_PORT)"
-	@echo "  Dashboard:      http://localhost:3001"
+	@echo "  Dashboard:      http://localhost:3000"
 	@echo ""
 
 # ===========================================
@@ -71,11 +73,13 @@ dev:
 	@echo ""
 	@echo "$(GREEN)✓ Infrastructure started successfully!$(RESET)"
 	@echo ""
-	@echo "  PostgreSQL:     localhost:5433"
+	@echo "  PostgreSQL:     localhost:5437"
 	@echo "  Redis:          localhost:6379"
-	@echo "  Traefik UI:     http://localhost:8082"
-	@echo "  Registry:       localhost:5001"
+	@echo "  Traefik UI:     http://localhost:8080"
+	@echo "  Registry:       localhost:5000"
+	@echo "  ngrok UI:       http://localhost:4040"
 	@echo ""
+	@echo "Run $(YELLOW)make ngrok-url$(RESET) to get your GitHub App callback URL"
 	@echo "Run $(YELLOW)make logs$(RESET) to see container logs"
 	@echo "Run $(YELLOW)make ps$(RESET) to see container status"
 
@@ -99,6 +103,26 @@ logs:
 # Show running containers
 ps:
 	@docker-compose ps
+
+# Get ngrok HTTPS URL for GitHub App callback
+ngrok-url:
+	@echo "$(CYAN)Fetching ngrok tunnel URL...$(RESET)"
+	@curl -s http://localhost:4040/api/tunnels | grep -o '"public_url":"https://[^"]*' | cut -d'"' -f4 | head -1 | while read url; do \
+		if [ -n "$$url" ]; then \
+			echo ""; \
+			echo "$(GREEN)ngrok HTTPS URL:$(RESET) $$url"; \
+			echo ""; \
+			echo "$(YELLOW)GitHub App Callback URL:$(RESET)"; \
+			echo "  $$url/api/auth/github/callback"; \
+			echo ""; \
+			echo "$(YELLOW)GitHub Webhook URL:$(RESET)"; \
+			echo "  $$url/api/webhooks/github"; \
+			echo ""; \
+		else \
+			echo "$(YELLOW)ngrok is not running or no tunnel found$(RESET)"; \
+			echo "Run $(GREEN)make dev$(RESET) first to start infrastructure"; \
+		fi \
+	done
 
 # ===========================================
 # Application Commands

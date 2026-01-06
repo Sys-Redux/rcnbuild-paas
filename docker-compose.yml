@@ -19,7 +19,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in .env}
       POSTGRES_DB: ${POSTGRES_DB:-rcnbuild}
     ports:
-      - "5433:5432"  # Host:Container - using 5433 since 5432 is occupied
+      - "5437:5432"  # Host:Container - using 5437 since 5432 is occupied
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -73,7 +73,7 @@ services:
     ports:
       - "80:80"       # HTTP
       - "443:443"     # HTTPS
-      - "8082:8080"   # Dashboard - using 8082 since 8080 is occupied
+      - "8080:8080"   # Traefik Dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -89,11 +89,32 @@ services:
     image: registry:2
     container_name: rcnbuild-registry
     ports:
-      - "5001:5000"  # Host:Container - using 5001 since 5000 is occupied
+      - "5000:5000"  # Docker Registry
     volumes:
       - registry_data:/var/lib/registry
     environment:
       REGISTRY_STORAGE_DELETE_ENABLED: "true"  # Allow image deletion
+    networks:
+      - rcnbuild-network
+    restart: unless-stopped
+
+  # ===========================================
+  # ngrok Tunnel (Development Only)
+  # ===========================================
+  # Creates an HTTPS tunnel to your local API server.
+  # Required for GitHub App OAuth callbacks.
+  # Get your authtoken from: https://dashboard.ngrok.com/get-started/your-authtoken
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: rcnbuild-ngrok
+    command:
+      - "http"
+      - "http://host.docker.internal:8080"
+      - "--log=stdout"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:?NGROK_AUTHTOKEN is required in .env - get it from https://dashboard.ngrok.com}
+    ports:
+      - "4040:4040"  # ngrok inspection UI
     networks:
       - rcnbuild-network
     restart: unless-stopped
