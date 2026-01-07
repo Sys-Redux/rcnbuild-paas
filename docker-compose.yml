@@ -1,11 +1,9 @@
-version: '3.8'
-
 # ===========================================
 # RCNbuild Local Development Infrastructure
 # ===========================================
-# Start with: docker-compose up -d
-# Stop with:  docker-compose down
-# Logs:       docker-compose logs -f [service]
+# Start with: make dev
+# Stop with:  make down
+# Logs:       make logs
 
 services:
   # ===========================================
@@ -109,12 +107,14 @@ services:
     container_name: rcnbuild-ngrok
     command:
       - "http"
-      - "http://host.docker.internal:8080"
+      - "http://host.docker.internal:${API_PORT:-8081}"
       - "--log=stdout"
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:?NGROK_AUTHTOKEN is required in .env - get it from https://dashboard.ngrok.com}
     ports:
       - "4040:4040"  # ngrok inspection UI
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Required for Linux
     networks:
       - rcnbuild-network
     restart: unless-stopped

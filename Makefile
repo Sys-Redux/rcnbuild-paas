@@ -18,6 +18,9 @@ YELLOW := \033[0;33m
 CYAN   := \033[0;36m
 RESET  := \033[0m
 
+# Docker configuration (use standard socket if Docker Desktop socket doesn't exist)
+DOCKER_COMPOSE := DOCKER_HOST=unix:///var/run/docker.sock docker compose
+
 .PHONY: help dev down logs ps ngrok-url api worker migrate-up migrate-down migrate-create migrate-status test lint build clean deps
 
 # ===========================================
@@ -69,7 +72,7 @@ help:
 # Start all infrastructure services
 dev:
 	@echo "$(CYAN)Starting infrastructure...$(RESET)"
-	@docker-compose up -d
+	@$(DOCKER_COMPOSE) up -d
 	@echo ""
 	@echo "$(GREEN)✓ Infrastructure started successfully!$(RESET)"
 	@echo ""
@@ -86,23 +89,23 @@ dev:
 # Stop all infrastructure services
 down:
 	@echo "$(CYAN)Stopping infrastructure...$(RESET)"
-	@docker-compose down
+	@$(DOCKER_COMPOSE) down
 	@echo "$(GREEN)✓ Infrastructure stopped$(RESET)"
 
 # Stop and remove all data (volumes)
 down-clean:
 	@echo "$(YELLOW)WARNING: This will delete all data!$(RESET)"
 	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
-	@docker-compose down -v
+	@$(DOCKER_COMPOSE) down -v
 	@echo "$(GREEN)✓ Infrastructure stopped and data removed$(RESET)"
 
 # Tail logs from all services
 logs:
-	@docker-compose logs -f
+	@$(DOCKER_COMPOSE) logs -f
 
 # Show running containers
 ps:
-	@docker-compose ps
+	@$(DOCKER_COMPOSE) ps
 
 # Get ngrok HTTPS URL for GitHub App callback
 ngrok-url:

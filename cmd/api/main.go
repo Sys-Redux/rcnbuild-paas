@@ -109,7 +109,7 @@ func main() {
 // Auth Handlers (TODO: Implement)
 // ===========================================
 
-// handleGitHubLogin redirects the user to GitHub OAuth authorization page
+// handleGitHubLogin redirects the user to GitHub App OAuth authorization page
 func handleGitHubLogin(c *gin.Context) {
 	clientID := os.Getenv("GITHUB_CLIENT_ID")
 	redirectURI := os.Getenv("GITHUB_REDIRECT_URI")
@@ -121,10 +121,11 @@ func handleGitHubLogin(c *gin.Context) {
 		return
 	}
 
-	// Build GitHub OAuth URL
-	// Scopes: read:user (profile), user:email (email), repo (access repos)
+	// Build GitHub App OAuth URL
+	// For GitHub Apps permissions are defined in the app settings
+	// No scopes needed - the app's permissions are pre-configured
 	authURL := fmt.Sprintf(
-		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=read:user,user:email,repo",
+		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s",
 		clientID,
 		redirectURI,
 	)
