@@ -1,14 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/Sys-Redux/rcnbuild-paas/internal/auth"
+	"github.com/Sys-Redux/rcnbuild-paas/internal/database"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -24,6 +30,12 @@ func main() {
 	// Setup zerolog with pretty console output
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
+
+	// Connect to database
+	if err := database.Connect(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to database")
+	}
+	defer database.Close()
 
 	// Set Gin mode based on environment
 	if os.Getenv("ENVIRONMENT") == "production" {
@@ -45,12 +57,12 @@ func main() {
 	api := r.Group("/api")
 	{
 		// Auth routes
-		auth := api.Group("/auth")
+		authGroup := api.Group("/auth")
 		{
-			auth.GET("/github", handleGitHubLogin)
-			auth.GET("/github/callback", handleGitHubCallback)
-			auth.POST("/logout", handleLogout)
-			auth.GET("/me", handleGetMe)
+			authGroup.GET("/github", handleGitHubLogin)
+			authGroup.GET("/github/callback", handleGitHubCallback)
+			authGroup.POST("/logout", handleLogout)
+			authGroup.GET("/me", auth.AuthRequired(), handleGetMe)
 		}
 
 		// Webhook routes
@@ -106,7 +118,7 @@ func main() {
 }
 
 // ===========================================
-// Auth Handlers (TODO: Implement)
+// Auth Handlers
 // ===========================================
 
 // handleGitHubLogin redirects the user to GitHub App OAuth authorization page
@@ -143,24 +155,138 @@ func handleGitHubCallback(c *gin.Context) {
 		return
 	}
 
-	// TODO: Exchange code for access token
-	// TODO: Fetch user info from GitHub
-	// TODO: Create/update user in database
-	// TODO: Generate JWT and set cookie
-	// TODO: Redirect to dashboard
+	// Exchange code for access token
+	tokenResp, err := exchangeCodeForToken(code)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to exchange code for token",
+		})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "GitHub callback received",
-		"code":    code,
-		"todo":    "Exchange code for token and create session",
-	})
+	// Fetch user info from GitHub
+	githubUser, err := fetchGitHubUser(tokenResp.AccessToken)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to fetch GitHub user")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to fetch GitHub user info",
+		})
+		return
+	}
+
+	// Create or update user in database
+	user, err := database.CreateOrUpdateUser(c.Request.Context(),
+		githubUser, tokenResp.AccessToken)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create/update user")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to create or update user",
+		})
+		return
+	}
+
+	// Generate JWT
+	jwtToken, err := auth.GenerateToken(user.ID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to generate JWT")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to generate authentication token",
+		})
+		return
+	}
+
+	// Set auth cookie
+	auth.SetAuthCookie(c, jwtToken)
+	log.Info().
+		Str("user_id", user.ID).
+		Str("github_username", user.GitHubUsername).
+		Msg("User authenticated successfully")
+
+	// Redirect to dashboard
+	dashboardURL := os.Getenv("DASHBOARD_URL")
+	if dashboardURL == "" {
+		dashboardURL = "/dashboard"
+	}
+	c.Redirect(http.StatusTemporaryRedirect, dashboardURL)
+}
+
+// TokenResponse represents GitHub's token exchange response
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	Scope       string `json:"scope"`
+}
+
+// Exchanges authorization code for access token
+func exchangeCodeForToken(code string) (*TokenResponse, error) {
+	data := url.Values{}
+	data.Set("client_id", os.Getenv("GITHUB_CLIENT_ID"))
+	data.Set("client_secret", os.Getenv("GITHUB_CLIENT_SECRET"))
+	data.Set("code", code)
+
+	req, err := http.NewRequest("POST",
+		"https://github.com/login/oauth/access_token",
+		bytes.NewBufferString(data.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var tokenResp TokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return nil, err
+	}
+
+	return &tokenResp, nil
+}
+
+// Fetch authenticated user's info from GitHub API
+func fetchGitHubUser(accessToken string) (*database.GitHubUser, error) {
+	req, err := http.NewRequest("GET",
+		"https://api.github.com/user", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var user database.GitHubUser
+	if err := json.Unmarshal(body, &user); err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 // handleLogout clears the user's session
 func handleLogout(c *gin.Context) {
-	// TODO: Clear JWT cookie
-	// TODO: Invalidate session in Redis (optional)
-
+	auth.ClearAuthCookie(c)
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Logged out successfully",
 	})
@@ -168,13 +294,15 @@ func handleLogout(c *gin.Context) {
 
 // handleGetMe returns the current authenticated user
 func handleGetMe(c *gin.Context) {
-	// TODO: Extract JWT from cookie/header
-	// TODO: Validate JWT
-	// TODO: Return user info from database
+	user := auth.GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Not authenticated",
+		})
+		return
+	}
 
-	c.JSON(http.StatusUnauthorized, gin.H{
-		"error": "Not authenticated",
-	})
+	c.JSON(http.StatusOK, user)
 }
 
 // ===========================================
