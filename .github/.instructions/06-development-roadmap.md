@@ -1,7 +1,20 @@
 <!-- markdownlint-disable -->
 # Development Roadmap
 
-## Phase 0: Project Setup (Week 1)
+> **Last Updated:** January 11, 2026
+
+## Progress Summary
+
+| Phase | Status | Completion |
+|-------|--------|------------|
+| Phase 0: Project Setup | ✅ Complete | 90% |
+| Phase 1: Core MVP | 🚧 In Progress | 25% |
+| Phase 2: Enhanced Features | ⏳ Not Started | 0% |
+| Phase 3: Advanced Features | ⏳ Not Started | 0% |
+
+---
+
+## Phase 0: Project Setup (Week 1) ✅ COMPLETED
 
 ### Goals
 - Initialize project structure
@@ -9,105 +22,159 @@
 - Create basic infrastructure with Docker Compose
 
 ### Tasks
-- [ ] Initialize Go module for API
-- [ ] Initialize Next.js project for dashboard
-- [ ] Create Docker Compose for local development
-  - PostgreSQL
-  - Redis
-  - Traefik
-  - MinIO (optional for MVP)
-- [ ] Set up database migrations (golang-migrate)
-- [ ] Create Makefile for common tasks
-- [ ] Set up basic CI (GitHub Actions)
+- [x] Initialize Go module for API (`github.com/Sys-Redux/rcnbuild-paas`)
+- [ ] Initialize Next.js project for dashboard *(deferred to Phase 1)*
+- [x] Create Docker Compose for local development
+  - [x] PostgreSQL (port 5437)
+  - [x] Redis (port 6379)
+  - [x] Traefik (ports 80, 443, 8080)
+  - [x] Docker Registry (port 5000)
+  - [x] ngrok tunnel for GitHub OAuth callbacks
+- [x] Set up database migrations (golang-migrate)
+- [x] Create Makefile for common tasks
+- [ ] Set up basic CI (GitHub Actions) *(planned)*
 
-### Deliverables
+### Deliverables ✅
 ```
 /rcnbuild
   /cmd
-    /api          # API server entrypoint
-    /worker       # Build worker entrypoint
+    /api              # ✅ API server entrypoint (implemented)
+    /worker           # ⏳ Build worker entrypoint (placeholder)
   /internal
-    /...          # Business logic
-  /web            # Next.js dashboard
-  /docker-compose.yml
-  /Makefile
+    /auth             # ✅ JWT + middleware
+    /database         # ✅ PostgreSQL connection + user queries
+  /web                # ⏳ Next.js dashboard (not started)
+  /migrations         # ✅ SQL migrations
+  /docker-compose.yml # ✅ Full dev infrastructure
+  /Makefile           # ✅ Comprehensive dev commands
 ```
+
+### Infrastructure Details
+
+**Docker Compose Services:**
+| Service | Image | Port | Status |
+|---------|-------|------|--------|
+| PostgreSQL | postgres:16-alpine | 5437 | ✅ Running |
+| Redis | redis:7-alpine | 6379 | ✅ Running |
+| Traefik | traefik:v3.0 | 80, 443, 8080 | ✅ Running |
+| Registry | registry:2 | 5000 | ✅ Running |
+| ngrok | ngrok/ngrok:latest | 4040 | ✅ Running |
+
+**Go Dependencies Installed:**
+- `github.com/gin-gonic/gin` - HTTP framework
+- `github.com/golang-jwt/jwt/v5` - JWT handling
+- `github.com/jackc/pgx/v5` - PostgreSQL driver
+- `github.com/joho/godotenv` - Environment loading
+- `github.com/rs/zerolog` - Structured logging
 
 ---
 
-## Phase 1: Core MVP (Weeks 2-4)
+## Phase 1: Core MVP (Weeks 2-4) 🚧 IN PROGRESS
 
 ### Week 2: Authentication & Projects
 
-**Auth System**
-- [ ] GitHub OAuth flow
-- [ ] JWT token generation
-- [ ] Protected API routes
-- [ ] User model and storage
+**Auth System** ✅ COMPLETED
+- [x] GitHub OAuth flow (login redirect + callback)
+- [x] JWT token generation (7-day expiry, HS256)
+- [x] Protected API routes (`auth.AuthRequired()` middleware)
+- [x] User model and storage (PostgreSQL with pgx)
+- [x] Cookie-based session management (HTTP-only, SameSite=Lax)
+- [x] Logout functionality
 
-**Project Management**
+**API Endpoints Implemented:**
+```
+GET  /api/auth/github           ✅ Redirect to GitHub OAuth
+GET  /api/auth/github/callback  ✅ Handle OAuth callback
+POST /api/auth/logout           ✅ Clear session
+GET  /api/auth/me               ✅ Get current user (protected)
+POST /api/webhooks/github       🚧 Webhook receiver (skeleton)
+GET  /health                    ✅ Health check
+```
+
+**Database Schema Created:**
+- [x] `users` table with GitHub OAuth fields
+- [ ] `projects` table
+- [ ] `deployments` table
+- [ ] `env_vars` table
+
+**Project Management** ⏳ NOT STARTED
+- [ ] List GitHub repos via API
 - [ ] Create project from GitHub repo
 - [ ] List user's projects
 - [ ] Project settings (name, branch, commands)
 - [ ] Environment variable storage (encrypted)
+- [ ] Webhook creation on GitHub repo
 
-**Dashboard**
-- [ ] Login with GitHub
+**Dashboard** ⏳ NOT STARTED
+- [ ] Initialize Next.js 14+ with App Router
+- [ ] Set up Tailwind CSS
+- [ ] Login with GitHub button
 - [ ] New project wizard
 - [ ] Project list view
 - [ ] Basic project settings page
 
 ### Week 3: Build System
 
-**Build Pipeline**
-- [ ] Job queue setup (Asynq)
-- [ ] Build worker process
+**Build Pipeline** ⏳ NOT STARTED
+- [ ] Job queue setup (Asynq + Redis)
+- [ ] Build worker process (`cmd/worker`)
 - [ ] Git clone functionality
-- [ ] Runtime detection (Node.js, Python, Static)
+- [ ] Runtime detection (Node.js, Python, Static, Docker)
+- [ ] Dockerfile generation
 - [ ] Docker image building
+- [ ] Push to local registry
 - [ ] Build log streaming (Redis pub/sub → WebSocket)
 
 **Supported Runtimes**
-- [ ] Node.js (npm/yarn)
-- [ ] Python (pip)
+- [ ] Node.js (npm/yarn/pnpm)
+- [ ] Python (pip/pipenv/poetry)
 - [ ] Static HTML
+- [ ] Custom Dockerfile
 
 **Dashboard**
-- [ ] Build logs viewer
+- [ ] Build logs viewer (WebSocket streaming)
 - [ ] Build status indicators
+- [ ] Build history
 
 ### Week 4: Deployment & Routing
 
-**Container Management**
+**Container Management** ⏳ NOT STARTED
+- [ ] Docker SDK for Go integration
 - [ ] Start containers from built images
 - [ ] Environment variable injection
 - [ ] Port binding
 - [ ] Container lifecycle (start/stop/restart)
+- [ ] Health checks
 
-**Routing**
-- [ ] Traefik dynamic configuration
+**Routing** ⏳ NOT STARTED (Traefik infrastructure ready)
+- [ ] Traefik dynamic configuration via Docker labels
 - [ ] Subdomain routing (`slug.rcnbuild.dev`)
-- [ ] TLS certificate generation
+- [ ] TLS certificate generation (Let's Encrypt)
 
-**GitHub Integration**
-- [ ] Webhook receiver
-- [ ] Auto-deploy on push
+**GitHub Integration** 🚧 PARTIAL
+- [x] Webhook receiver endpoint (structure only)
+- [ ] Webhook signature validation (HMAC-SHA256)
+- [ ] Parse push/PR events
+- [ ] Auto-deploy on push to configured branch
 - [ ] Webhook setup via GitHub API
 
 **Dashboard**
-- [ ] Deployment history
-- [ ] Live deployment URL
+- [ ] Deployment history view
+- [ ] Live deployment URL display
 - [ ] Manual deploy button
-- [ ] Basic rollback
+- [ ] Rollback to previous deployment
+- [ ] Cancel in-progress deployment
 
-### Phase 1 Milestone ✅
-User can:
-1. Sign in with GitHub
-2. Create a project from a repository
-3. See automatic deployments on push
-4. Access their app via HTTPS URL
-5. View build logs
-6. Roll back to previous deployment
+### Phase 1 Milestone Checklist
+
+| # | Requirement | Status |
+|---|-------------|--------|
+| 1 | Sign in with GitHub | ✅ Complete |
+| 2 | Create a project from a repository | ⏳ Not Started |
+| 3 | See automatic deployments on push | ⏳ Not Started |
+| 4 | Access app via HTTPS URL | ⏳ Not Started |
+| 5 | View build logs | ⏳ Not Started |
+| 6 | Roll back to previous deployment | ⏳ Not Started |
 
 ---
 
@@ -255,3 +322,15 @@ databases:
 - [ ] Can scale to 10+ concurrent builds
 - [ ] Can host 100+ applications
 - [ ] Uptime > 99% for deployed apps
+
+---
+
+## Next Steps (Recommended Order)
+
+1. **Create Projects Database Schema** - Add `projects`, `deployments`, `env_vars` tables
+2. **GitHub Repo Listing** - Implement `/api/github/repos` to list user's repositories
+3. **Project CRUD** - Implement project creation and management endpoints
+4. **Initialize Next.js Dashboard** - Set up the web frontend in `/web`
+5. **Build Worker** - Implement Asynq job queue and build process
+6. **Container Deployment** - Docker SDK integration for running containers
+7. **Traefik Routing** - Dynamic subdomain configuration

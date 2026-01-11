@@ -1,6 +1,22 @@
 <!-- markdownlint-disable -->
 # Architecture Design
 
+> **Last Updated:** January 11, 2026
+
+## Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| API Server (Go/Gin) | ✅ Implemented | Auth routes, health check, webhook skeleton |
+| PostgreSQL | ✅ Running | Users table created, connection pool configured |
+| Redis | ✅ Running | Ready for cache/queue |
+| Traefik | ✅ Running | Configured for dynamic routing |
+| Docker Registry | ✅ Running | Local registry on port 5000 |
+| Build Worker | ⏳ Not Started | Asynq integration pending |
+| Dashboard (Next.js) | ⏳ Not Started | Web folder empty |
+
+---
+
 ## High-Level Architecture
 
 ```
@@ -233,18 +249,22 @@ Production: Kubernetes
 
 ## Database Schema (Core Tables)
 
+> **Note:** The `users` table is implemented. Other tables are planned.
+
 ```sql
--- Users (linked to GitHub)
+-- Users (linked to GitHub) ✅ IMPLEMENTED
 CREATE TABLE users (
-    id UUID PRIMARY KEY,
-    github_id BIGINT UNIQUE,
-    github_username VARCHAR(255),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    github_id BIGINT UNIQUE NOT NULL,
+    github_username VARCHAR(255) NOT NULL,
     email VARCHAR(255),
+    avatar_url TEXT,
     access_token_encrypted TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Projects
+-- Projects ⏳ PLANNED
 CREATE TABLE projects (
     id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(id),
@@ -297,20 +317,29 @@ CREATE INDEX idx_deployments_status ON deployments(status);
 
 ## API Endpoints (Core)
 
-```
-# Authentication
-POST   /api/auth/github          # GitHub OAuth callback
-POST   /api/auth/logout          # Logout
-GET    /api/auth/me              # Current user
+> **Note:** Auth endpoints are implemented. Others are planned.
 
-# Projects
+```
+# Authentication ✅ IMPLEMENTED
+GET    /api/auth/github          # Redirect to GitHub OAuth
+GET    /api/auth/github/callback # GitHub OAuth callback
+POST   /api/auth/logout          # Logout
+GET    /api/auth/me              # Current user (protected)
+
+# Health Check ✅ IMPLEMENTED
+GET    /health                   # Service health check
+
+# Webhooks 🚧 PARTIAL (skeleton only)
+POST   /api/webhooks/github      # GitHub webhook receiver
+
+# Projects ⏳ PLANNED
 GET    /api/projects             # List projects
 POST   /api/projects             # Create project
 GET    /api/projects/:id         # Get project
 PATCH  /api/projects/:id         # Update project
 DELETE /api/projects/:id         # Delete project
 
-# Deployments
+# Deployments ⏳ PLANNED
 GET    /api/projects/:id/deployments      # List deployments
 POST   /api/projects/:id/deployments      # Trigger deployment
 GET    /api/deployments/:id               # Get deployment
@@ -318,14 +347,11 @@ POST   /api/deployments/:id/rollback      # Rollback to this deployment
 POST   /api/deployments/:id/cancel        # Cancel deployment
 GET    /api/deployments/:id/logs          # Stream logs (WebSocket)
 
-# Environment Variables
+# Environment Variables ⏳ PLANNED
 GET    /api/projects/:id/env              # List env vars
 POST   /api/projects/:id/env              # Create env var
 PATCH  /api/projects/:id/env/:key         # Update env var
 DELETE /api/projects/:id/env/:key         # Delete env var
-
-# Webhooks
-POST   /api/webhooks/github               # GitHub webhook receiver
 ```
 
 ---

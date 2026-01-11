@@ -1,26 +1,45 @@
 <!-- markdownlint-disable -->
 # Technologies & Frameworks
 
+> **Last Updated:** January 11, 2026
+
+## Implementation Status
+
+| Component | Technology | Status |
+|-----------|------------|--------|
+| API Server | Go + Gin | ✅ Implemented |
+| Database | PostgreSQL + pgx | ✅ Implemented |
+| Cache/Queue | Redis | ✅ Running (not yet used in code) |
+| Job Queue | Asynq | ⏳ Planned |
+| JWT Auth | golang-jwt/jwt | ✅ Implemented |
+| Logging | zerolog | ✅ Implemented |
+| Container Runtime | Docker | ✅ Running |
+| Reverse Proxy | Traefik v3.0 | ✅ Running |
+| Container Registry | Docker Registry | ✅ Running |
+| Dashboard | Next.js | ⏳ Not Started |
+
+---
+
 ## Recommended Tech Stack
 
 ### Backend / Control Plane
 
-| Component | Recommended Technology | Alternatives | Rationale |
-|-----------|----------------------|--------------|-----------|
-| **API Server** | Go (Golang) | Node.js, Rust | High performance, excellent concurrency, great for system-level tasks |
-| **Web Framework** | Gin or Fiber | Echo, Chi | Fast, well-documented, good middleware support |
-| **Database** | PostgreSQL | - | Battle-tested, JSONB support, used by both Vercel and Render |
-| **Cache/Queue** | Redis | - | Fast, supports pub/sub for real-time updates, job queues |
-| **Job Queue** | Redis + Asynq | Bull (Node.js) | Background job processing for builds, deploys |
+| Component | Recommended Technology | Alternatives | Status |
+|-----------|----------------------|--------------|--------|
+| **API Server** | Go (Golang) | Node.js, Rust | ✅ Implemented |
+| **Web Framework** | Gin or Fiber | Echo, Chi | ✅ Using Gin |
+| **Database** | PostgreSQL | - | ✅ Implemented (pgx) |
+| **Cache/Queue** | Redis | - | ✅ Running |
+| **Job Queue** | Redis + Asynq | Bull (Node.js) | ⏳ Planned |
 
 ### Container & Orchestration
 
-| Component | Recommended Technology | Alternatives | Rationale |
-|-----------|----------------------|--------------|-----------|
-| **Container Runtime** | Docker | Podman | Industry standard, well-documented |
-| **Orchestration (MVP)** | Docker Compose + Docker Swarm | - | Simple, good for proof-of-concept |
-| **Orchestration (Production)** | Kubernetes (K8s) | Nomad | Industry standard, scalable, but complex |
-| **Container Registry** | Harbor | Docker Registry | Open source, feature-rich |
+| Component | Recommended Technology | Alternatives | Status |
+|-----------|----------------------|--------------|--------|
+| **Container Runtime** | Docker | Podman | ✅ Running |
+| **Orchestration (MVP)** | Docker Compose + Docker Swarm | - | ✅ Docker Compose |
+| **Orchestration (Production)** | Kubernetes (K8s) | Nomad | ⏳ Future |
+| **Container Registry** | Harbor | Docker Registry | ✅ Docker Registry |
 
 ### Build System
 
@@ -32,28 +51,28 @@
 
 ### Networking & Ingress
 
-| Component | Recommended Technology | Alternatives | Rationale |
-|-----------|----------------------|--------------|-----------|
-| **Reverse Proxy** | Traefik | Nginx, Caddy | Auto-discovery, dynamic config, Let's Encrypt integration |
-| **TLS Certificates** | Let's Encrypt (via Traefik) | Caddy | Free, automatic renewal |
-| **DNS** | Cloudflare API | PowerDNS | Easy wildcard DNS, DDoS protection |
+| Component | Recommended Technology | Alternatives | Status |
+|-----------|----------------------|--------------|--------|
+| **Reverse Proxy** | Traefik | Nginx, Caddy | ✅ Running (v3.0) |
+| **TLS Certificates** | Let's Encrypt (via Traefik) | Caddy | ⏳ Configured |
+| **DNS** | Cloudflare API | PowerDNS | ⏳ Not Started |
 
 ### Frontend / Dashboard
 
-| Component | Recommended Technology | Alternatives | Rationale |
-|-----------|----------------------|--------------|-----------|
-| **Framework** | Next.js (React) | SvelteKit, Nuxt | Rich ecosystem, SSR support, familiar |
-| **Styling** | Tailwind CSS | - | Utility-first, fast development |
-| **State Management** | TanStack Query | SWR | Server state caching, real-time updates |
-| **Real-time** | WebSockets / SSE | - | Log streaming, status updates |
+| Component | Recommended Technology | Alternatives | Status |
+|-----------|----------------------|--------------|--------|
+| **Framework** | Next.js (React) | SvelteKit, Nuxt | ⏳ Not Started |
+| **Styling** | Tailwind CSS | - | ⏳ Not Started |
+| **State Management** | TanStack Query | SWR | ⏳ Not Started |
+| **Real-time** | WebSockets / SSE | - | ⏳ Not Started |
 
 ### Authentication & Authorization
 
-| Component | Recommended Technology | Alternatives | Rationale |
-|-----------|----------------------|--------------|-----------|
-| **Auth Provider** | GitHub OAuth | - | Primary integration, familiar to developers |
-| **Session/Token** | JWT + Refresh Tokens | - | Stateless, scalable |
-| **RBAC** | Casbin | Custom | Flexible role-based access control |
+| Component | Recommended Technology | Alternatives | Status |
+|-----------|----------------------|--------------|--------|
+| **Auth Provider** | GitHub OAuth | - | ✅ Implemented |
+| **Session/Token** | JWT + Refresh Tokens | - | ✅ Implemented (JWT) |
+| **RBAC** | Casbin | Custom | ⏳ Not Started |
 
 ### Observability
 
