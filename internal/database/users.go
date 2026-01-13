@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/Sys-Redux/rcnbuild-paas/pkg/crypto"
 )
 
 // User represents a user in the database
@@ -48,8 +50,11 @@ func CreateOrUpdateUser(
 	RETURNING id, github_id, github_username, email, avatar_url, created_at, updated_at
 	`
 
-	// TODO: Encrypt accessToken before storing (using JWT_SECRET or dedicated key)
-	encryptedToken := accessToken // Placeholder -- implement encryption
+	// Encrypt access token before storing
+	encryptedToken, err := crypto.Encrypt(accessToken)
+	if err != nil {
+		return nil, err
+	}
 
 	var user User
 	var email, avatarURL *string
@@ -61,7 +66,7 @@ func CreateOrUpdateUser(
 		avatarURL = &githubUser.AvatarURL
 	}
 
-	err := pool.QueryRow(ctx, query,
+	err = pool.QueryRow(ctx, query,
 		githubUser.ID,
 		githubUser.Login,
 		email,
@@ -176,4 +181,26 @@ func UpdateUserEmail(ctx context.Context, id string, email string) error {
 
 	_, err := pool.Exec(ctx, query, id, email)
 	return err
+}
+
+// GetUserAccessToken retrieves and decrypts the GitHub access token for a user
+// Used internally for making GitHub API calls on behalf of the user
+func GetUserAccessToken(ctx context.Context, userID string) (string, error) {
+	query := `
+		SELECT access_token_encrypted
+		FROM users
+		WHERE id = $1
+	`
+
+	var encryptedToken *string
+	err := pool.QueryRow(ctx, query, userID).Scan(&encryptedToken)
+	if err != nil {
+		return "", err
+	}
+
+	if encryptedToken == nil {
+		return "", errors.New("user has no access token")
+	}
+
+	return crypto.Decrypt(*encryptedToken)
 }
