@@ -1,14 +1,14 @@
 <!-- markdownlint-disable -->
 # Development Roadmap
 
-> **Last Updated:** January 11, 2026
+> **Last Updated:** January 14, 2026
 
 ## Progress Summary
 
 | Phase | Status | Completion |
 |-------|--------|------------|
-| Phase 0: Project Setup | ✅ Complete | 90% |
-| Phase 1: Core MVP | 🚧 In Progress | 25% |
+| Phase 0: Project Setup | ✅ Complete | 100% |
+| Phase 1: Core MVP | 🚧 In Progress | 40% |
 | Phase 2: Enhanced Features | ⏳ Not Started | 0% |
 | Phase 3: Advanced Features | ⏳ Not Started | 0% |
 
@@ -42,9 +42,11 @@
     /worker           # ⏳ Build worker entrypoint (placeholder)
   /internal
     /auth             # ✅ JWT + middleware
-    /database         # ✅ PostgreSQL connection + user queries
+    /database         # ✅ PostgreSQL connection + all models
+  /pkg
+    /crypto           # ✅ AES-256-GCM encryption
   /web                # ⏳ Next.js dashboard (not started)
-  /migrations         # ✅ SQL migrations
+  /migrations         # ✅ SQL migrations (users, projects, deployments, env_vars)
   /docker-compose.yml # ✅ Full dev infrastructure
   /Makefile           # ✅ Comprehensive dev commands
 ```
@@ -93,16 +95,63 @@ GET  /health                    ✅ Health check
 
 **Database Schema Created:**
 - [x] `users` table with GitHub OAuth fields
-- [ ] `projects` table
-- [ ] `deployments` table
-- [ ] `env_vars` table
+- [x] `projects` table with full CRUD operations
+- [x] `deployments` table with status management
+- [x] `env_vars` table with encryption support
 
-**Project Management** ⏳ NOT STARTED
+**Database Functions Implemented:**
+
+*Users (`internal/database/users.go`):*
+- [x] `CreateOrUpdateUser()` - Upsert with encrypted access token
+- [x] `GetUserByID()` - Retrieve by UUID
+- [x] `GetUserByGitHubID()` - Retrieve by GitHub ID
+- [x] `DeleteUser()` - Remove user
+- [x] `UpdateUserEmail()` - Update email
+- [x] `GetUserAccessToken()` - Decrypt and return GitHub token
+
+*Projects (`internal/database/projects.go`):*
+- [x] `CreateProject()` - Insert new project
+- [x] `GetProjectByID()` - Retrieve by UUID
+- [x] `GetProjectBySlug()` - Retrieve by slug
+- [x] `GetProjectByRepoFullName()` - Retrieve by repo name
+- [x] `GetProjectsByUserID()` - List user's projects
+- [x] `UpdateProject()` - Update project settings
+- [x] `SetProjectWebhook()` - Store webhook credentials
+- [x] `DeleteProject()` - Remove project
+- [x] `SlugExists()` - Check slug availability
+
+*Deployments (`internal/database/deployments.go`):*
+- [x] `CreateDeployment()` - Create with pending status
+- [x] `GetDeploymentByID()` - Retrieve by UUID
+- [x] `GetDeploymentsByProjectID()` - List project deployments
+- [x] `GetLiveDeployment()` - Get current live deployment
+- [x] `UpdateDeploymentStatus()` - Update status with error
+- [x] `StartDeploymentBuild()` - Mark as building
+- [x] `SetDeploymentBuilt()` - Mark as built with image tag
+- [x] `SetDeploymentLive()` - Mark as live with URL
+- [x] `SupersededOldDeployments()` - Mark old deploys as superseded
+- [x] `SetDeploymentFailed()` - Mark as failed with error
+- [x] `CancelDeployment()` - Cancel in-progress deployment
+- [x] `DeleteDeployment()` - Remove deployment
+- [x] `DeleteDeploymentsByProjectID()` - Remove all for project
+
+*Environment Variables (`internal/database/env_vars.go`):*
+- [x] `CreateOrUpdateEnvVar()` - Upsert with encrypted value
+- [x] `GetEnvVarsByProjectID()` - List project env vars
+- [x] `DeleteEnvVar()` - Remove single env var
+- [x] `DeleteAllEnvVar()` - Remove all for project
+- [x] `GetEnvVarsAsMap()` - Decrypt for container injection
+- [x] `ToDisplay()` / `ToDisplayList()` - Safe API response (masked)
+
+*Crypto (`pkg/crypto/crypto.go`):*
+- [x] `Encrypt()` - AES-256-GCM encryption with base64 output
+- [x] `Decrypt()` - Decrypt base64 ciphertext
+
+**Project Management** 🚧 PARTIAL
 - [ ] List GitHub repos via API
-- [ ] Create project from GitHub repo
-- [ ] List user's projects
-- [ ] Project settings (name, branch, commands)
-- [ ] Environment variable storage (encrypted)
+- [x] Project database model and queries (complete)
+- [ ] Project API endpoints (not wired up)
+- [x] Environment variable storage (encrypted)
 - [ ] Webhook creation on GitHub repo
 
 **Dashboard** ⏳ NOT STARTED
@@ -170,11 +219,11 @@ GET  /health                    ✅ Health check
 | # | Requirement | Status |
 |---|-------------|--------|
 | 1 | Sign in with GitHub | ✅ Complete |
-| 2 | Create a project from a repository | ⏳ Not Started |
+| 2 | Create a project from a repository | 🚧 Database ready, API pending |
 | 3 | See automatic deployments on push | ⏳ Not Started |
 | 4 | Access app via HTTPS URL | ⏳ Not Started |
 | 5 | View build logs | ⏳ Not Started |
-| 6 | Roll back to previous deployment | ⏳ Not Started |
+| 6 | Roll back to previous deployment | 🚧 Database ready, API pending |
 
 ---
 
@@ -327,9 +376,9 @@ databases:
 
 ## Next Steps (Recommended Order)
 
-1. **Create Projects Database Schema** - Add `projects`, `deployments`, `env_vars` tables
+1. ~~**Create Projects Database Schema**~~ ✅ Done - All tables and queries implemented
 2. **GitHub Repo Listing** - Implement `/api/github/repos` to list user's repositories
-3. **Project CRUD** - Implement project creation and management endpoints
+3. **Project API Endpoints** - Wire up project CRUD routes in `main.go`
 4. **Initialize Next.js Dashboard** - Set up the web frontend in `/web`
 5. **Build Worker** - Implement Asynq job queue and build process
 6. **Container Deployment** - Docker SDK integration for running containers

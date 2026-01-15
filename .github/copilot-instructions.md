@@ -467,13 +467,13 @@ make test
 
 ## Phase 1 MVP Checklist
 
-1. [ ] GitHub OAuth login
+1. [x] GitHub OAuth login
 2. [ ] List GitHub repos
 3. [ ] Create project from repo
 4. [ ] Detect runtime automatically
 5. [ ] Configure build/start commands
-6. [ ] Set environment variables
-7. [ ] Receive GitHub webhooks
+6. [x] Set environment variables (database layer + encryption)
+7. [ ] Receive GitHub webhooks (endpoint exists, validation pending)
 8. [ ] Build in Docker container
 9. [ ] Push to container registry
 10. [ ] Deploy container with Traefik routing

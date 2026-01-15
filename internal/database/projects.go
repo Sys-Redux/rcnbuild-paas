@@ -41,6 +41,17 @@ type CreateProjectInput struct {
 	Port          int
 }
 
+// Contains fields that can be updated
+type UpdateProjectInput struct {
+	Name          *string
+	Branch        *string
+	RootDirectory *string
+	BuildCommand  *string
+	StartCommand  *string
+	Runtime       *string
+	Port          *int
+}
+
 // Inserts a new project in database
 func CreateProject(ctx context.Context,
 	input *CreateProjectInput) (*Project, error) {
@@ -196,17 +207,6 @@ func GetProjectsByUserID(ctx context.Context,
 	}
 
 	return projects, nil
-}
-
-// Contains fields that can be updated
-type UpdateProjectInput struct {
-	Name          *string
-	Branch        *string
-	RootDirectory *string
-	BuildCommand  *string
-	StartCommand  *string
-	Runtime       *string
-	Port          *int
 }
 
 // Update a projects settings

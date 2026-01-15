@@ -281,12 +281,14 @@ CANCELLED (any stage before LIVE)
 
 ## 🗺️ Roadmap
 
-### Phase 1: MVP *(In Progress)*
+### Phase 1: MVP *(In Progress — 40%)*
 - [x] Project scaffolding
 - [x] Infrastructure setup (Docker Compose)
-- [ ] GitHub OAuth login
+- [x] GitHub OAuth login
+- [x] Database schema (users, projects, deployments, env_vars)
+- [x] AES-256-GCM encryption for secrets at rest
 - [ ] List GitHub repositories
-- [ ] Create project from repo
+- [ ] Project API endpoints
 - [ ] Auto-detect runtime
 - [ ] Build in Docker container
 - [ ] Deploy with Traefik routing
