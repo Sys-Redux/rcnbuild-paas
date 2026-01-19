@@ -1,13 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,6 +11,8 @@ import (
 
 	"github.com/Sys-Redux/rcnbuild-paas/internal/auth"
 	"github.com/Sys-Redux/rcnbuild-paas/internal/database"
+	"github.com/Sys-Redux/rcnbuild-paas/internal/projects"
+	"github.com/Sys-Redux/rcnbuild-paas/internal/webhooks"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -53,22 +51,48 @@ func main() {
 		})
 	})
 
+	// Initialize handlers
+	authHandlers := auth.NewHandlers()
+	projectHandlers := projects.NewHandlers()
+	webhookHandlers := webhooks.NewHandlers()
+
 	// API Routes
 	api := r.Group("/api")
 	{
 		// Auth routes
 		authGroup := api.Group("/auth")
 		{
-			authGroup.GET("/github", handleGitHubLogin)
-			authGroup.GET("/github/callback", handleGitHubCallback)
-			authGroup.POST("/logout", handleLogout)
-			authGroup.GET("/me", auth.AuthRequired(), handleGetMe)
+			authGroup.GET("/github", authHandlers.HandleGitHubLogin)
+			authGroup.GET("/github/callback", authHandlers.HandleGitHubCallback)
+			authGroup.POST("/logout", authHandlers.HandleLogout)
+			authGroup.GET("/me", auth.AuthRequired(), authHandlers.HandleGetMe)
 		}
 
-		// Webhook routes
+		// GitHub repos (for selecting repo to deploy)
+		api.GET("/repos", auth.AuthRequired(),
+			projectHandlers.HandleListRepos)
+
+		// Project routes
+		projectsGroup := api.Group("/projects")
+		projectsGroup.Use(auth.AuthRequired())
+		{
+			projectsGroup.GET("", projectHandlers.HandleListProjects)
+			projectsGroup.POST("", projectHandlers.HandleCreateProject)
+			projectsGroup.GET("/:id", projectHandlers.HandleGetProject)
+			projectsGroup.PATCH("/:id", projectHandlers.HandleUpdateProject)
+			projectsGroup.DELETE("/:id", projectHandlers.HandleDeleteProject)
+
+			// Environment variable routes
+			projectsGroup.GET("/:id/env", projectHandlers.HandleListEnvVars)
+			projectsGroup.POST("/:id/env", projectHandlers.HandleCreateEnvVar)
+			projectsGroup.DELETE("/:id/env/:key",
+				projectHandlers.HandleDeleteEnvVar)
+		}
+
+		// Webhook routes (no auth - handled via secret)
 		webhooks := api.Group("/webhooks")
 		{
-			webhooks.POST("/github", handleGitHubWebhook)
+			webhooks.POST("/github", webhookHandlers.HandleGitHubWebhook)
 		}
 	}
 
@@ -115,217 +139,4 @@ func main() {
 	}
 
 	log.Info().Msg("Server exited")
-}
-
-// ===========================================
-// Auth Handlers
-// ===========================================
-
-// handleGitHubLogin redirects the user to GitHub App OAuth authorization page
-func handleGitHubLogin(c *gin.Context) {
-	clientID := os.Getenv("GITHUB_CLIENT_ID")
-	redirectURI := os.Getenv("GITHUB_REDIRECT_URI")
-
-	if clientID == "" || redirectURI == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "GitHub OAuth not configured",
-		})
-		return
-	}
-
-	// Build GitHub App OAuth URL
-	// For GitHub Apps permissions are defined in the app settings
-	// No scopes needed - the app's permissions are pre-configured
-	authURL := fmt.Sprintf(
-		"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s",
-		clientID,
-		redirectURI,
-	)
-
-	c.Redirect(http.StatusTemporaryRedirect, authURL)
-}
-
-// handleGitHubCallback handles the OAuth callback from GitHub
-func handleGitHubCallback(c *gin.Context) {
-	code := c.Query("code")
-	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Missing authorization code",
-		})
-		return
-	}
-
-	// Exchange code for access token
-	tokenResp, err := exchangeCodeForToken(code)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to exchange code for token",
-		})
-		return
-	}
-
-	// Fetch user info from GitHub
-	githubUser, err := fetchGitHubUser(tokenResp.AccessToken)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to fetch GitHub user")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch GitHub user info",
-		})
-		return
-	}
-
-	// Create or update user in database
-	user, err := database.CreateOrUpdateUser(c.Request.Context(),
-		githubUser, tokenResp.AccessToken)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create/update user")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create or update user",
-		})
-		return
-	}
-
-	// Generate JWT
-	jwtToken, err := auth.GenerateToken(user.ID)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to generate JWT")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to generate authentication token",
-		})
-		return
-	}
-
-	// Set auth cookie
-	auth.SetAuthCookie(c, jwtToken)
-	log.Info().
-		Str("user_id", user.ID).
-		Str("github_username", user.GitHubUsername).
-		Msg("User authenticated successfully")
-
-	// Redirect to dashboard
-	dashboardURL := os.Getenv("DASHBOARD_URL")
-	if dashboardURL == "" {
-		dashboardURL = "/dashboard"
-	}
-	c.Redirect(http.StatusTemporaryRedirect, dashboardURL)
-}
-
-// TokenResponse represents GitHub's token exchange response
-type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	Scope       string `json:"scope"`
-}
-
-// Exchanges authorization code for access token
-func exchangeCodeForToken(code string) (*TokenResponse, error) {
-	data := url.Values{}
-	data.Set("client_id", os.Getenv("GITHUB_CLIENT_ID"))
-	data.Set("client_secret", os.Getenv("GITHUB_CLIENT_SECRET"))
-	data.Set("code", code)
-
-	req, err := http.NewRequest("POST",
-		"https://github.com/login/oauth/access_token",
-		bytes.NewBufferString(data.Encode()))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var tokenResp TokenResponse
-	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return nil, err
-	}
-
-	return &tokenResp, nil
-}
-
-// Fetch authenticated user's info from GitHub API
-func fetchGitHubUser(accessToken string) (*database.GitHubUser, error) {
-	req, err := http.NewRequest("GET",
-		"https://api.github.com/user", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var user database.GitHubUser
-	if err := json.Unmarshal(body, &user); err != nil {
-		return nil, err
-	}
-
-	return &user, nil
-}
-
-// handleLogout clears the user's session
-func handleLogout(c *gin.Context) {
-	auth.ClearAuthCookie(c)
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Logged out successfully",
-	})
-}
-
-// handleGetMe returns the current authenticated user
-func handleGetMe(c *gin.Context) {
-	user := auth.GetCurrentUser(c)
-	if user == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Not authenticated",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, user)
-}
-
-// ===========================================
-// Webhook Handlers (TODO: Implement)
-// ===========================================
-
-// handleGitHubWebhook processes incoming GitHub webhooks
-func handleGitHubWebhook(c *gin.Context) {
-	// TODO: Validate webhook signature using GITHUB_WEBHOOK_SECRET
-	// TODO: Parse webhook payload
-	// TODO: Handle push events to trigger deployments
-
-	eventType := c.GetHeader("X-GitHub-Event")
-	deliveryID := c.GetHeader("X-GitHub-Delivery")
-
-	log.Info().
-		Str("event", eventType).
-		Str("delivery_id", deliveryID).
-		Msg("Received GitHub webhook")
-
-	c.JSON(http.StatusOK, gin.H{
-		"message":     "Webhook received",
-		"event":       eventType,
-		"delivery_id": deliveryID,
-	})
 }

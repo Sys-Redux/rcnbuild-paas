@@ -1,14 +1,14 @@
 <!-- markdownlint-disable -->
 # Development Roadmap
 
-> **Last Updated:** January 14, 2026
+> **Last Updated:** January 18, 2026
 
 ## Progress Summary
 
 | Phase | Status | Completion |
 |-------|--------|------------|
 | Phase 0: Project Setup | ✅ Complete | 100% |
-| Phase 1: Core MVP | 🚧 In Progress | 40% |
+| Phase 1: Core MVP | 🚧 In Progress | 60% |
 | Phase 2: Enhanced Features | ⏳ Not Started | 0% |
 | Phase 3: Advanced Features | ⏳ Not Started | 0% |
 
@@ -43,6 +43,9 @@
   /internal
     /auth             # ✅ JWT + middleware
     /database         # ✅ PostgreSQL connection + all models
+    /github           # ✅ GitHub API client (repos, webhooks)
+    /projects         # ✅ Project + EnvVar HTTP handlers
+    /builds           # ✅ Runtime detection
   /pkg
     /crypto           # ✅ AES-256-GCM encryption
   /web                # ⏳ Next.js dashboard (not started)
@@ -89,6 +92,15 @@ GET  /api/auth/github           ✅ Redirect to GitHub OAuth
 GET  /api/auth/github/callback  ✅ Handle OAuth callback
 POST /api/auth/logout           ✅ Clear session
 GET  /api/auth/me               ✅ Get current user (protected)
+GET  /api/repos                 ✅ List user's GitHub repos
+GET  /api/projects              ✅ List user's projects
+POST /api/projects              ✅ Create project from repo
+GET  /api/projects/:id          ✅ Get project details
+PATCH /api/projects/:id         ✅ Update project settings
+DELETE /api/projects/:id        ✅ Delete project
+GET  /api/projects/:id/env      ✅ List env vars (masked)
+POST /api/projects/:id/env      ✅ Create/update env var
+DELETE /api/projects/:id/env/:key ✅ Delete env var
 POST /api/webhooks/github       🚧 Webhook receiver (skeleton)
 GET  /health                    ✅ Health check
 ```
@@ -147,12 +159,50 @@ GET  /health                    ✅ Health check
 - [x] `Encrypt()` - AES-256-GCM encryption with base64 output
 - [x] `Decrypt()` - Decrypt base64 ciphertext
 
-**Project Management** 🚧 PARTIAL
-- [ ] List GitHub repos via API
+**GitHub API Client** ✅ COMPLETED (`internal/github/client.go`)
+- [x] `NewClient()` - Create authenticated GitHub client
+- [x] `ListUserRepos()` - Fetch repos with push access
+- [x] `GetRepo()` - Fetch specific repository
+- [x] `GetRepoContents()` - List directory contents
+- [x] `FileExists()` - Check if file exists in repo
+- [x] `CreateWebhook()` - Register webhook on repo
+- [x] `DeleteWebhook()` - Remove webhook from repo
+- [x] `GenerateWebhookSecret()` - Crypto-secure secret generation
+- [x] `ParseRepoFullName()` - Parse "owner/repo" format
+
+**Runtime Detection** ✅ COMPLETED (`internal/builds/runtime.go`)
+- [x] `DetectRuntime()` - Analyze repo to detect runtime
+- [x] Node.js detection (package.json, lock files)
+- [x] Python detection (requirements.txt, pyproject.toml, Pipfile)
+- [x] Go detection (go.mod)
+- [x] Static site detection (index.html)
+- [x] Docker detection (Dockerfile)
+- [x] Package manager detection (npm, yarn, pnpm, bun)
+- [x] Framework detection (Next.js, Vite)
+- [x] `GetDockerfileForRuntime()` - Generate Dockerfile for runtime
+
+**Project Management** ✅ COMPLETED
+- [x] List GitHub repos via API (`GET /api/repos`)
 - [x] Project database model and queries (complete)
-- [ ] Project API endpoints (not wired up)
+- [x] Project API endpoints (all wired up)
 - [x] Environment variable storage (encrypted)
-- [ ] Webhook creation on GitHub repo
+- [x] Environment variable API endpoints
+- [x] Webhook creation on GitHub repo
+- [x] Runtime auto-detection on project creation
+- [x] Slug generation and uniqueness validation
+
+**Project Handlers** ✅ COMPLETED (`internal/projects/handlers.go`)
+- [x] `HandleListRepos()` - List deployable GitHub repos
+- [x] `HandleListProjects()` - List user's projects
+- [x] `HandleCreateProject()` - Create project from repo
+- [x] `HandleGetProject()` - Get project details + live deployment
+- [x] `HandleUpdateProject()` - Update project settings
+- [x] `HandleDeleteProject()` - Delete project + cleanup webhook
+
+**Environment Variable Handlers** ✅ COMPLETED (`internal/projects/env_handlers.go`)
+- [x] `HandleListEnvVars()` - List env vars (masked values)
+- [x] `HandleCreateEnvVar()` - Create/update env var
+- [x] `HandleDeleteEnvVar()` - Delete env var
 
 **Dashboard** ⏳ NOT STARTED
 - [ ] Initialize Next.js 14+ with App Router
@@ -168,8 +218,8 @@ GET  /health                    ✅ Health check
 - [ ] Job queue setup (Asynq + Redis)
 - [ ] Build worker process (`cmd/worker`)
 - [ ] Git clone functionality
-- [ ] Runtime detection (Node.js, Python, Static, Docker)
-- [ ] Dockerfile generation
+- [x] Runtime detection (Node.js, Python, Static, Docker) ✅ Implemented in `internal/builds/runtime.go`
+- [x] Dockerfile generation ✅ Implemented in `internal/builds/runtime.go`
 - [ ] Docker image building
 - [ ] Push to local registry
 - [ ] Build log streaming (Redis pub/sub → WebSocket)
@@ -200,12 +250,12 @@ GET  /health                    ✅ Health check
 - [ ] Subdomain routing (`slug.rcnbuild.dev`)
 - [ ] TLS certificate generation (Let's Encrypt)
 
-**GitHub Integration** 🚧 PARTIAL
+**GitHub Integration** ✅ MOSTLY COMPLETE
 - [x] Webhook receiver endpoint (structure only)
 - [ ] Webhook signature validation (HMAC-SHA256)
 - [ ] Parse push/PR events
 - [ ] Auto-deploy on push to configured branch
-- [ ] Webhook setup via GitHub API
+- [x] Webhook setup via GitHub API ✅ Creates webhook on project creation
 
 **Dashboard**
 - [ ] Deployment history view
@@ -219,8 +269,8 @@ GET  /health                    ✅ Health check
 | # | Requirement | Status |
 |---|-------------|--------|
 | 1 | Sign in with GitHub | ✅ Complete |
-| 2 | Create a project from a repository | 🚧 Database ready, API pending |
-| 3 | See automatic deployments on push | ⏳ Not Started |
+| 2 | Create a project from a repository | ✅ Complete (API + webhook setup) |
+| 3 | See automatic deployments on push | 🚧 Webhook endpoint exists, validation pending |
 | 4 | Access app via HTTPS URL | ⏳ Not Started |
 | 5 | View build logs | ⏳ Not Started |
 | 6 | Roll back to previous deployment | 🚧 Database ready, API pending |
@@ -377,9 +427,12 @@ databases:
 ## Next Steps (Recommended Order)
 
 1. ~~**Create Projects Database Schema**~~ ✅ Done - All tables and queries implemented
-2. **GitHub Repo Listing** - Implement `/api/github/repos` to list user's repositories
-3. **Project API Endpoints** - Wire up project CRUD routes in `main.go`
-4. **Initialize Next.js Dashboard** - Set up the web frontend in `/web`
-5. **Build Worker** - Implement Asynq job queue and build process
-6. **Container Deployment** - Docker SDK integration for running containers
-7. **Traefik Routing** - Dynamic subdomain configuration
+2. ~~**GitHub Repo Listing**~~ ✅ Done - `/api/repos` lists user's deployable repos
+3. ~~**Project API Endpoints**~~ ✅ Done - Full CRUD wired up in `main.go`
+4. ~~**Runtime Detection**~~ ✅ Done - Auto-detects Node.js, Python, Go, Static, Docker
+5. ~~**Environment Variables API**~~ ✅ Done - Full CRUD with encryption
+6. **GitHub Webhook Validation** - Implement HMAC-SHA256 signature verification
+7. **Initialize Next.js Dashboard** - Set up the web frontend in `/web`
+8. **Build Worker** - Implement Asynq job queue and build process
+9. **Container Deployment** - Docker SDK integration for running containers
+10. **Traefik Routing** - Dynamic subdomain configuration

@@ -99,19 +99,19 @@ When making implementation decisions, always ask:
 /rcnbuild
 ├── /cmd
 │   ├── /api              # API server main.go
-│   └── /worker           # Build worker main.go
+│   └── /worker           # Build worker main.go (placeholder)
 ├── /internal
-│   ├── /auth             # GitHub OAuth, JWT
-│   ├── /github           # GitHub API, webhooks
-│   ├── /projects         # Project CRUD
-│   ├── /builds           # Build logic
-│   ├── /deploys          # Deployment logic
-│   ├── /containers       # Docker SDK interactions
-│   ├── /queue            # Asynq job definitions
+│   ├── /auth             # GitHub OAuth, JWT, middleware
+│   ├── /github           # GitHub API client (repos, webhooks)
+│   ├── /projects         # Project + EnvVar HTTP handlers
+│   ├── /builds           # Runtime detection, Dockerfile generation
+│   ├── /deploys          # Deployment logic (placeholder)
+│   ├── /containers       # Docker SDK interactions (placeholder)
+│   ├── /queue            # Asynq job definitions (placeholder)
 │   └── /database         # PostgreSQL models, queries
 ├── /pkg
-│   └── /...              # Shared utilities
-├── /web                  # Next.js dashboard
+│   └── /crypto           # AES-256-GCM encryption utilities
+├── /web                  # Next.js dashboard (not started)
 │   ├── /app              # App router pages
 │   ├── /components       # React components
 │   └── /lib              # API client, utils
@@ -468,12 +468,12 @@ make test
 ## Phase 1 MVP Checklist
 
 1. [x] GitHub OAuth login
-2. [ ] List GitHub repos
-3. [ ] Create project from repo
-4. [ ] Detect runtime automatically
-5. [ ] Configure build/start commands
+2. [x] List GitHub repos
+3. [x] Create project from repo
+4. [x] Detect runtime automatically
+5. [x] Configure build/start commands
 6. [x] Set environment variables (database layer + encryption)
-7. [ ] Receive GitHub webhooks (endpoint exists, validation pending)
+7. [x] Receive GitHub webhooks (endpoint exists, validation pending)
 8. [ ] Build in Docker container
 9. [ ] Push to container registry
 10. [ ] Deploy container with Traefik routing
