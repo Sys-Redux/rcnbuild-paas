@@ -1,3 +1,4 @@
+<!--markdownlint-disable-->
 # Next.js Development Notes
 
 > Quick reference for developers coming from Vite/React SPA background
@@ -225,7 +226,7 @@ export default async function ProjectPage({
 }) {
   const { id } = await params
   const project = await getProject(id)
-  
+
   return <div>{project.name}</div>
 }
 ```
@@ -293,7 +294,7 @@ import { Link, useNavigate } from 'react-router-dom'
 
 function Nav() {
   const navigate = useNavigate()
-  
+
   return (
     <>
       <Link to="/dashboard">Dashboard</Link>
@@ -311,7 +312,7 @@ import { useRouter } from 'next/navigation'
 
 function Nav() {
   const router = useRouter()
-  
+
   return (
     <>
       <Link href="/dashboard">Dashboard</Link>
@@ -330,19 +331,19 @@ import { useRouter } from 'next/navigation'
 
 export function Navigation() {
   const router = useRouter()
-  
+
   // Navigate to a route
   router.push('/dashboard')
-  
+
   // Replace current history entry
   router.replace('/dashboard')
-  
+
   // Go back
   router.back()
-  
+
   // Refresh current route (re-fetch data)
   router.refresh()
-  
+
   // Prefetch a route
   router.prefetch('/projects')
 }
@@ -358,9 +359,9 @@ import { usePathname, useSearchParams } from 'next/navigation'
 export function CurrentRoute() {
   const pathname = usePathname()        // "/dashboard/projects"
   const searchParams = useSearchParams() // URLSearchParams object
-  
+
   const filter = searchParams.get('filter') // "active"
-  
+
   return <div>Current path: {pathname}</div>
 }
 ```
@@ -503,7 +504,7 @@ function Page() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
-  
+
   // ... lots of boilerplate
 }
 ```
@@ -558,15 +559,15 @@ export default function Dashboard() {
   return (
     <div>
       <h1>Dashboard</h1>
-      
+
       {/* This loads immediately */}
       <UserInfo />
-      
+
       {/* This streams in when ready */}
       <Suspense fallback={<div>Loading stats...</div>}>
         <SlowStats />
       </Suspense>
-      
+
       {/* This also streams independently */}
       <Suspense fallback={<div>Loading activity...</div>}>
         <RecentActivity />
@@ -590,7 +591,7 @@ import ClientComponent from './client-component'
 
 export default async function Page() {
   const data = await fetchData() // Runs on server
-  
+
   // Pass serializable data as props
   return <ClientComponent initialData={data} />
 }
@@ -615,7 +616,7 @@ import InteractiveList from './list'   // Client Component
 
 export default async function Page() {
   const items = await getItems()
-  
+
   return (
     <div className="flex">
       <Sidebar />

@@ -12,6 +12,7 @@ import (
 	"github.com/Sys-Redux/rcnbuild-paas/internal/auth"
 	"github.com/Sys-Redux/rcnbuild-paas/internal/database"
 	"github.com/Sys-Redux/rcnbuild-paas/internal/projects"
+	"github.com/Sys-Redux/rcnbuild-paas/internal/queue"
 	"github.com/Sys-Redux/rcnbuild-paas/internal/webhooks"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -34,6 +35,16 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to connect to database")
 	}
 	defer database.Close()
+
+	// Connect to Redis for queue
+	redisAddr := os.Getenv("REDIS_URL")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	if err := queue.Connect(redisAddr); err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to Redis queue")
+	}
+	defer queue.Close()
 
 	// Set Gin mode based on environment
 	if os.Getenv("ENVIRONMENT") == "production" {

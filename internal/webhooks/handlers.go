@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Sys-Redux/rcnbuild-paas/internal/database"
+	"github.com/Sys-Redux/rcnbuild-paas/internal/queue"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
@@ -132,8 +133,27 @@ func (h *Handlers) HandleGitHubWebhook(c *gin.Context) {
 		Str("branch", pushBranch).
 		Msg("Created deployment record from push event")
 
-	// TODO: Enqueue build job w/ Asynq
-	// queue.EnqueueBuild(c.Request.Context(), &queue.BuildPayload{...})
+	// Enqueue build job w/ Asynq
+	_, err = queue.EnqueueBuild(c.Request.Context(), &queue.BuildPayload{
+		DeploymentID: deployment.ID,
+		ProjectID:    project.ID,
+		CommitSHA:    commitSHA,
+		Branch:       pushBranch,
+		RepoFullName: project.RepoFullName,
+		RepoCloneURL: project.RepoURL,
+		RootDir:      project.RootDirectory,
+		BuildCommand: stringOrDefault(project.BuildCommand, ""),
+		StartCommand: stringOrDefault(project.StartCommand, ""),
+		Runtime:      stringOrDefault(project.Runtime, ""),
+		Port:         project.Port,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to enqueue build job")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to enqueue build job",
+		})
+		return
+	}
 
 	c.JSON(http.StatusAccepted, gin.H{
 		"message":       "Deployment created",
@@ -141,4 +161,12 @@ func (h *Handlers) HandleGitHubWebhook(c *gin.Context) {
 		"commit":        commitSHA,
 		"branch":        pushBranch,
 	})
+}
+
+// Helper functions
+func stringOrDefault(s *string, def string) string {
+	if s != nil {
+		return *s
+	}
+	return def
 }
