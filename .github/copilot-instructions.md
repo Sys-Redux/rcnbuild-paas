@@ -86,8 +86,8 @@ When making implementation decisions, always ask:
 ### Frontend
 | Component | Technology | Notes |
 |-----------|------------|-------|
-| Framework | **Next.js 14+** (App Router) | Dashboard UI |
-| Styling | **Tailwind CSS** | Utility-first CSS |
+| Framework | **Next.js 16+** (App Router) | Dashboard UI |
+| Styling | **Tailwind CSS v4** | Utility-first CSS |
 | State | **TanStack Query** | Server state management |
 | Real-time | **WebSockets** | Log streaming |
 
@@ -98,23 +98,26 @@ When making implementation decisions, always ask:
 ```
 /rcnbuild
 ├── /cmd
-│   ├── /api              # API server main.go
-│   └── /worker           # Build worker main.go (placeholder)
+│   ├── /api              # API server main.go (full implementation)
+│   └── /worker           # Build worker main.go (logic in queue/handlers.go)
 ├── /internal
 │   ├── /auth             # GitHub OAuth, JWT, middleware
 │   ├── /github           # GitHub API client (repos, webhooks)
 │   ├── /projects         # Project + EnvVar HTTP handlers
 │   ├── /builds           # Runtime detection, Dockerfile generation
-│   ├── /deploys          # Deployment logic (placeholder)
-│   ├── /containers       # Docker SDK interactions (placeholder)
-│   ├── /queue            # Asynq job definitions (placeholder)
+│   ├── /containers       # Docker SDK interactions (implemented)
+│   ├── /queue            # Asynq job definitions + handlers (implemented)
+│   ├── /webhooks         # GitHub webhook handling (implemented)
 │   └── /database         # PostgreSQL models, queries
 ├── /pkg
 │   └── /crypto           # AES-256-GCM encryption utilities
-├── /web                  # Next.js dashboard (not started)
-│   ├── /app              # App router pages
-│   ├── /components       # React components
-│   └── /lib              # API client, utils
+├── /web                  # Next.js 16 dashboard (initialized)
+│   └── /web
+│       ├── /src
+│       │   ├── /app      # App router pages
+│       │   ├── /lib      # API client, TanStack Query provider
+│       │   └── /types    # TypeScript types
+│       └── package.json  # Dependencies (React 19, Tailwind v4)
 ├── /migrations           # SQL migrations
 ├── docker-compose.yml    # Local development
 ├── Makefile              # Build/run commands
@@ -473,14 +476,14 @@ make test
 4. [x] Detect runtime automatically
 5. [x] Configure build/start commands
 6. [x] Set environment variables (database layer + encryption)
-7. [x] Receive GitHub webhooks (endpoint exists, validation pending)
-8. [ ] Build in Docker container
-9. [ ] Push to container registry
-10. [ ] Deploy container with Traefik routing
-11. [ ] Generate HTTPS URL (slug.rcnbuild.dev)
+7. [x] Receive GitHub webhooks (full validation + parsing)
+8. [x] Build in Docker container (Asynq queue + build handlers)
+9. [x] Push to container registry
+10. [x] Deploy container with Traefik routing
+11. [x] Generate HTTPS URL (slug.rcnbuild.dev) — backend ready, needs production TLS
 12. [ ] Stream build logs via WebSocket
-13. [ ] View deployment history
-14. [ ] Rollback to previous deployment
+13. [ ] View deployment history (dashboard UI)
+14. [ ] Rollback to previous deployment (API endpoint)
 
 ---
 

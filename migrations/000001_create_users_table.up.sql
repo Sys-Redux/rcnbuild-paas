@@ -1,6 +1,6 @@
 -- Users table: stores GitHub authenticated users
 CREATE TABLE users (
-    id UUID PRIMARY_KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     github_id BIGINT UNIQUE NOT NULL,
     github_username VARCHAR(255) NOT NULL,
     email VARCHAR(255),

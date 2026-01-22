@@ -1,14 +1,14 @@
 <!-- markdownlint-disable -->
 # Development Roadmap
 
-> **Last Updated:** January 18, 2026
+> **Last Updated:** January 22, 2026
 
 ## Progress Summary
 
 | Phase | Status | Completion |
 |-------|--------|------------|
 | Phase 0: Project Setup | ✅ Complete | 100% |
-| Phase 1: Core MVP | 🚧 In Progress | 60% |
+| Phase 1: Core MVP | 🚧 In Progress | 90% |
 | Phase 2: Enhanced Features | ⏳ Not Started | 0% |
 | Phase 3: Advanced Features | ⏳ Not Started | 0% |
 
@@ -38,17 +38,25 @@
 ```
 /rcnbuild
   /cmd
-    /api              # ✅ API server entrypoint (implemented)
-    /worker           # ⏳ Build worker entrypoint (placeholder)
+    /api              # ✅ API server entrypoint (full implementation)
+    /worker           # ⏳ Build worker entrypoint (logic in queue/handlers.go)
   /internal
-    /auth             # ✅ JWT + middleware
-    /database         # ✅ PostgreSQL connection + all models
-    /github           # ✅ GitHub API client (repos, webhooks)
+    /auth             # ✅ JWT + middleware + OAuth handlers
+    /database         # ✅ PostgreSQL connection + all models (users, projects, deployments, env_vars)
+    /github           # ✅ GitHub API client (repos, webhooks, file detection)
     /projects         # ✅ Project + EnvVar HTTP handlers
-    /builds           # ✅ Runtime detection
+    /builds           # ✅ Runtime detection + Dockerfile generation
+    /containers       # ✅ Docker SDK integration (deploy, stop, remove, logs)
+    /queue            # ✅ Asynq job queue (client, tasks, build/deploy handlers)
+    /webhooks         # ✅ GitHub webhook handling (signature validation, push event parsing)
   /pkg
     /crypto           # ✅ AES-256-GCM encryption
-  /web                # ⏳ Next.js dashboard (not started)
+  /web
+    /web              # 🚧 Next.js 16 dashboard (initialized, UI not built)
+      /src
+        /app          # ✅ App router structure
+        /lib          # ✅ API client + TanStack Query provider
+        /types        # ✅ TypeScript types for Project, Deployment, EnvVar
   /migrations         # ✅ SQL migrations (users, projects, deployments, env_vars)
   /docker-compose.yml # ✅ Full dev infrastructure
   /Makefile           # ✅ Comprehensive dev commands
@@ -214,50 +222,64 @@ GET  /health                    ✅ Health check
 
 ### Week 3: Build System
 
-**Build Pipeline** ⏳ NOT STARTED
-- [ ] Job queue setup (Asynq + Redis)
-- [ ] Build worker process (`cmd/worker`)
-- [ ] Git clone functionality
-- [x] Runtime detection (Node.js, Python, Static, Docker) ✅ Implemented in `internal/builds/runtime.go`
-- [x] Dockerfile generation ✅ Implemented in `internal/builds/runtime.go`
-- [ ] Docker image building
-- [ ] Push to local registry
-- [ ] Build log streaming (Redis pub/sub → WebSocket)
+**Build Pipeline** ✅ COMPLETED
+- [x] Job queue setup (Asynq + Redis) — `internal/queue/client.go`
+- [x] Build worker handlers (`internal/queue/handlers.go`)
+- [x] Git clone functionality — Clones repo at specific commit SHA
+- [x] Runtime detection (Node.js, Python, Go, Static, Docker) — `internal/builds/runtime.go`
+- [x] Dockerfile generation — Multi-stage builds for Node.js, Python, Go, Static
+- [x] Docker image building — Via Docker CLI in build handler
+- [x] Push to local registry — Pushes to configured registry URL
+- [ ] Build log streaming (Redis pub/sub → WebSocket) — *Deferred to dashboard work*
+- [ ] Separate worker binary (`cmd/worker`) — *Currently integrated in main API*
 
-**Supported Runtimes**
-- [ ] Node.js (npm/yarn/pnpm)
-- [ ] Python (pip/pipenv/poetry)
-- [ ] Static HTML
-- [ ] Custom Dockerfile
+**Supported Runtimes** ✅ COMPLETED
+- [x] Node.js (npm/yarn/pnpm/bun) — Framework detection for Next.js, Vite
+- [x] Python (pip/pipenv/poetry)
+- [x] Go (go mod)
+- [x] Static HTML (nginx)
+- [x] Custom Dockerfile
 
-**Dashboard**
+**Dashboard** 🚧 IN PROGRESS
+- [x] Initialize Next.js 16+ with App Router
+- [x] Set up Tailwind CSS v4
+- [x] API client with credentials support (`src/lib/api.ts`)
+- [x] TanStack Query provider (`src/lib/providers/QueryProvider.tsx`)
+- [x] TypeScript types for Project, Deployment, EnvVar, GitHubRepo
 - [ ] Build logs viewer (WebSocket streaming)
 - [ ] Build status indicators
 - [ ] Build history
 
 ### Week 4: Deployment & Routing
 
-**Container Management** ⏳ NOT STARTED
-- [ ] Docker SDK for Go integration
-- [ ] Start containers from built images
-- [ ] Environment variable injection
-- [ ] Port binding
-- [ ] Container lifecycle (start/stop/restart)
-- [ ] Health checks
+**Container Management** ✅ COMPLETED (`internal/containers/docker.go`)
+- [x] Docker SDK for Go integration
+- [x] Start containers from built images
+- [x] Environment variable injection (decrypts from database)
+- [x] Port binding (configurable per project)
+- [x] Container lifecycle (start/stop/restart)
+- [x] Resource limits (512MB memory, 0.5 CPU)
+- [x] Container log retrieval
+- [ ] Health checks — *Planned but not implemented*
 
-**Routing** ⏳ NOT STARTED (Traefik infrastructure ready)
-- [ ] Traefik dynamic configuration via Docker labels
-- [ ] Subdomain routing (`slug.rcnbuild.dev`)
-- [ ] TLS certificate generation (Let's Encrypt)
+**Routing** ✅ COMPLETED
+- [x] Traefik dynamic configuration via Docker labels
+- [x] Subdomain routing (`slug.rcnbuild.dev`)
+- [x] HTTP and HTTPS routers configured
+- [x] Connects to `rcnbuild-network` for Traefik discovery
+- [ ] TLS certificate generation (Let's Encrypt) — *Requires production domain*
 
-**GitHub Integration** ✅ MOSTLY COMPLETE
-- [x] Webhook receiver endpoint (structure only)
-- [ ] Webhook signature validation (HMAC-SHA256)
-- [ ] Parse push/PR events
-- [ ] Auto-deploy on push to configured branch
-- [x] Webhook setup via GitHub API ✅ Creates webhook on project creation
+**GitHub Integration** ✅ COMPLETED
+- [x] Webhook receiver endpoint (`POST /api/webhooks/github`)
+- [x] Webhook signature validation (HMAC-SHA256) — `webhooks/github.go`
+- [x] Parse push events with full payload parsing
+- [x] Auto-deploy on push to configured branch
+- [x] Branch filtering (only deploys to configured branch)
+- [x] Webhook setup via GitHub API on project creation
 
-**Dashboard**
+**Dashboard** 🚧 PARTIALLY STARTED
+- [x] Next.js project structure created
+- [x] API client and types defined
 - [ ] Deployment history view
 - [ ] Live deployment URL display
 - [ ] Manual deploy button
@@ -269,11 +291,43 @@ GET  /health                    ✅ Health check
 | # | Requirement | Status |
 |---|-------------|--------|
 | 1 | Sign in with GitHub | ✅ Complete |
-| 2 | Create a project from a repository | ✅ Complete (API + webhook setup) |
-| 3 | See automatic deployments on push | 🚧 Webhook endpoint exists, validation pending |
-| 4 | Access app via HTTPS URL | ⏳ Not Started |
-| 5 | View build logs | ⏳ Not Started |
-| 6 | Roll back to previous deployment | 🚧 Database ready, API pending |
+| 2 | Create a project from a repository | ✅ Complete (API + webhook setup + runtime detection) |
+| 3 | See automatic deployments on push | ✅ Complete (webhook → build → deploy pipeline) |
+| 4 | Access app via HTTPS URL | 🚧 Backend ready, needs production domain + TLS |
+| 5 | View build logs | 🚧 Logs captured, WebSocket streaming not implemented |
+| 6 | Roll back to previous deployment | 🚧 Database ready, API endpoint pending |
+
+### Backend Completion Status
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Auth (OAuth + JWT) | ✅ Complete | `internal/auth/` |
+| Database Models | ✅ Complete | `internal/database/` |
+| GitHub API Client | ✅ Complete | `internal/github/client.go` |
+| Project Management | ✅ Complete | `internal/projects/` |
+| Runtime Detection | ✅ Complete | `internal/builds/runtime.go` |
+| Dockerfile Generation | ✅ Complete | `internal/builds/runtime.go` |
+| Job Queue (Asynq) | ✅ Complete | `internal/queue/` |
+| Build Handler | ✅ Complete | `internal/queue/handlers.go` |
+| Deploy Handler | ✅ Complete | `internal/queue/handlers.go` |
+| Container Management | ✅ Complete | `internal/containers/docker.go` |
+| Webhook Handling | ✅ Complete | `internal/webhooks/` |
+| Env Var Encryption | ✅ Complete | `pkg/crypto/crypto.go` |
+
+### Dashboard Completion Status
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Next.js 16 + App Router | ✅ Initialized | `web/web/` |
+| Tailwind CSS v4 | ✅ Configured | `web/web/` |
+| TanStack Query | ✅ Configured | `src/lib/providers/` |
+| API Client | ✅ Complete | `src/lib/api.ts` |
+| TypeScript Types | ✅ Complete | `src/types/project.ts` |
+| Login Page | ⏳ Not Started | — |
+| Project List | ⏳ Not Started | — |
+| Project Settings | ⏳ Not Started | — |
+| Deployment History | ⏳ Not Started | — |
+| Build Log Viewer | ⏳ Not Started | — |
 
 ---
 
@@ -431,8 +485,18 @@ databases:
 3. ~~**Project API Endpoints**~~ ✅ Done - Full CRUD wired up in `main.go`
 4. ~~**Runtime Detection**~~ ✅ Done - Auto-detects Node.js, Python, Go, Static, Docker
 5. ~~**Environment Variables API**~~ ✅ Done - Full CRUD with encryption
-6. **GitHub Webhook Validation** - Implement HMAC-SHA256 signature verification
-7. **Initialize Next.js Dashboard** - Set up the web frontend in `/web`
-8. **Build Worker** - Implement Asynq job queue and build process
-9. **Container Deployment** - Docker SDK integration for running containers
-10. **Traefik Routing** - Dynamic subdomain configuration
+6. ~~**GitHub Webhook Validation**~~ ✅ Done - HMAC-SHA256 signature verification in `webhooks/github.go`
+7. ~~**Build Pipeline**~~ ✅ Done - Asynq queue with build/deploy handlers
+8. ~~**Container Deployment**~~ ✅ Done - Docker SDK integration with Traefik labels
+9. **Complete Next.js Dashboard** - Build out the web frontend UI
+   - Login with GitHub button
+   - Project list view
+   - New project wizard
+   - Project settings page
+   - Deployment history
+   - Build log viewer (WebSocket)
+10. **Separate Worker Binary** - Extract worker to `cmd/worker` for scaling
+11. **Build Log Streaming** - Redis pub/sub to WebSocket for real-time logs
+12. **Health Checks** - Wait for container health before marking live
+13. **TLS Certificates** - Let's Encrypt integration for production domains
+14. **Manual Deploy & Rollback APIs** - Trigger deploys and rollbacks from UI

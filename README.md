@@ -144,19 +144,21 @@ The API will be available at `http://localhost:8080`
 ```
 rcnbuild-paas/
 ├── cmd/
-│   ├── api/              # API server entry point
-│   └── worker/           # Background job worker
+│   └── api/              # API server entry point
 ├── internal/             # Private application code
 │   ├── auth/             # GitHub OAuth, JWT handling
 │   ├── github/           # GitHub API client, webhooks
 │   ├── projects/         # Project CRUD operations
-│   ├── builds/           # Build orchestration
-│   ├── deploys/          # Deployment logic
+│   ├── builds/           # Runtime detection, Dockerfile generation
 │   ├── containers/       # Docker SDK interactions
-│   ├── queue/            # Asynq job definitions
+│   ├── queue/            # Asynq job queue (build + deploy handlers)
+│   ├── webhooks/         # GitHub webhook handling
 │   └── database/         # PostgreSQL queries
 ├── pkg/                  # Shared utilities
-├── web/                  # Next.js dashboard
+│   └── crypto/           # AES-256-GCM encryption
+├── web/                  # Next.js 16 dashboard
+│   └── web/
+│       └── src/          # App router, API client, types
 ├── migrations/           # SQL migration files
 ├── docker-compose.yml    # Local dev infrastructure
 ├── Makefile              # Development commands
@@ -200,35 +202,47 @@ make clean            # Remove build artifacts
 ## 🌐 API Endpoints
 
 ### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/auth/github` | Redirect to GitHub OAuth |
-| `GET` | `/api/auth/github/callback` | OAuth callback handler |
-| `POST` | `/api/auth/logout` | Clear session |
-| `GET` | `/api/auth/me` | Get current user |
+| Method | Endpoint | Description | Status |
+|--------|----------|-------------|--------|
+| `GET` | `/api/auth/github` | Redirect to GitHub OAuth | ✅ |
+| `GET` | `/api/auth/github/callback` | OAuth callback handler | ✅ |
+| `POST` | `/api/auth/logout` | Clear session | ✅ |
+| `GET` | `/api/auth/me` | Get current user | ✅ |
+
+### GitHub Repos
+| Method | Endpoint | Description | Status |
+|--------|----------|-------------|--------|
+| `GET` | `/api/repos` | List user's GitHub repos | ✅ |
 
 ### Projects
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/projects` | List user's projects |
-| `POST` | `/api/projects` | Create new project |
-| `GET` | `/api/projects/:id` | Get project details |
-| `PATCH` | `/api/projects/:id` | Update project |
-| `DELETE` | `/api/projects/:id` | Delete project |
+| Method | Endpoint | Description | Status |
+|--------|----------|-------------|--------|
+| `GET` | `/api/projects` | List user's projects | ✅ |
+| `POST` | `/api/projects` | Create new project | ✅ |
+| `GET` | `/api/projects/:id` | Get project details | ✅ |
+| `PATCH` | `/api/projects/:id` | Update project | ✅ |
+| `DELETE` | `/api/projects/:id` | Delete project | ✅ |
+
+### Environment Variables
+| Method | Endpoint | Description | Status |
+|--------|----------|-------------|--------|
+| `GET` | `/api/projects/:id/env` | List env vars (masked) | ✅ |
+| `POST` | `/api/projects/:id/env` | Create/update env var | ✅ |
+| `DELETE` | `/api/projects/:id/env/:key` | Delete env var | ✅ |
 
 ### Deployments
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/projects/:id/deployments` | List deployments |
-| `POST` | `/api/projects/:id/deployments` | Trigger deploy |
-| `GET` | `/api/deployments/:id` | Get deployment details |
-| `GET` | `/api/deployments/:id/logs` | Stream logs (WebSocket) |
-| `POST` | `/api/deployments/:id/rollback` | Rollback to this version |
+| Method | Endpoint | Description | Status |
+|--------|----------|-------------|--------|
+| `GET` | `/api/projects/:id/deployments` | List deployments | 🚧 |
+| `POST` | `/api/projects/:id/deployments` | Trigger deploy | 🚧 |
+| `GET` | `/api/deployments/:id` | Get deployment details | 🚧 |
+| `GET` | `/api/deployments/:id/logs` | Stream logs (WebSocket) | 🚧 |
+| `POST` | `/api/deployments/:id/rollback` | Rollback to this version | 🚧 |
 
 ### Webhooks
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/webhooks/github` | GitHub push events |
+| Method | Endpoint | Description | Status |
+|--------|----------|-------------|--------|
+| `POST` | `/api/webhooks/github` | GitHub push events | ✅ |
 
 ---
 
@@ -243,8 +257,8 @@ make clean            # Remove build artifacts
 - **zerolog** — Structured logging
 
 ### Frontend
-- **Next.js 14+** — App Router
-- **Tailwind CSS** — Styling
+- **Next.js 16** — App Router
+- **Tailwind CSS v4** — Styling
 - **TanStack Query** — Server state
 - **WebSocket** — Real-time logs
 
