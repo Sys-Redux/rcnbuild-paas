@@ -1,0 +1,106 @@
+# ===========================================
+# RCNbuild Production Overrides
+# ===========================================
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# This file overrides development settings for production deployment.
+
+services:
+  # ===========================================
+  # Traefik - Production Configuration
+  # ===========================================
+  traefik:
+    command:
+      # API & Dashboard - Secured (no insecure API)
+      - "--api.insecure=false"
+      - "--api.dashboard=true"
+
+      # Docker provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=rcnbuild-network"
+
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+
+      # HTTP to HTTPS redirect (production only)
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entryPoint.permanent=true"
+
+      # Let's Encrypt ACME (Production)
+      - "--certificatesresolvers.letsencrypt.acme.email=${TLS_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+
+      # Production logging (less verbose)
+      - "--log.level=WARN"
+      - "--accesslog=true"
+      - "--accesslog.bufferingsize=100"
+
+    ports:
+      - "80:80"
+      - "443:443"
+      # Dashboard port 8080 removed for security
+
+    labels:
+      # Secure the Traefik dashboard with HTTPS
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${BASE_DOMAIN:-localhost}`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls=true"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      # Optional: Add basic auth for dashboard (generate with: htpasswd -nb admin password)
+      # - "traefik.http.routers.traefik-dashboard.middlewares=dashboard-auth"
+      # - "traefik.http.middlewares.dashboard-auth.basicauth.users=admin:$$apr1$$..."
+
+  # ===========================================
+  # PostgreSQL - Production Settings
+  # ===========================================
+  postgres:
+    environment:
+      # Ensure password is set
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    # Don't expose PostgreSQL to host in production
+    ports: []
+    # Production-ready settings
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "log_statement=none"
+
+  # ===========================================
+  # Redis - Production Settings
+  # ===========================================
+  redis:
+    # Don't expose Redis to host in production
+    ports: []
+    command:
+      - "redis-server"
+      - "--appendonly"
+      - "yes"
+      - "--maxmemory"
+      - "256mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+
+  # ===========================================
+  # Registry - Production Settings
+  # ===========================================
+  registry:
+    # Don't expose registry to host in production
+    # Access via internal network only
+    ports: []
+
+  # ===========================================
+  # ngrok - Disabled in Production
+  # ===========================================
+  ngrok:
+    # Use profiles to prevent ngrok from starting
+    profiles:
+      - donotstart

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -70,6 +71,11 @@ func Deploy(ctx context.Context, cfg *DeployConfig) (string, error) {
 		// RCNbuild metadata
 		"rcnbuild.managed": "true",
 		"rcnbuild.slug":    cfg.Slug,
+	}
+
+	// Add Let's Encrypt certresolver if TLS enabled
+	if os.Getenv("TLS_ENABLED") == "true" {
+		labels[fmt.Sprintf("traefik.http.routers.%s-secure.tls.certresolver", cfg.Slug)] = "letsencrypt"
 	}
 
 	// Container configuration

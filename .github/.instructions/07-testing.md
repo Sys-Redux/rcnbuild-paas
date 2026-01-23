@@ -70,12 +70,12 @@ JWT_SECRET=your_32_byte_hex_secret_here
 ENCRYPTION_KEY=your_32_byte_hex_key_here
 
 # Server
-API_PORT=8085  # Use 8085 to avoid conflicts with Traefik dashboard on 8080
+API_PORT=8081  # Use any port except 8080 (Traefik dashboard)
 API_HOST=0.0.0.0
 
 # URLs
 DASHBOARD_URL=http://localhost:3000
-API_URL=http://localhost:8085
+API_URL=http://localhost:8081
 ```
 
 > **Important**: `POSTGRES_PASSWORD` is required by docker-compose and must match the password in `DATABASE_URL`.
@@ -222,13 +222,15 @@ make api
 Expected output:
 ```
 Starting RCNbuild API server
-{"level":"info","addr":"0.0.0.0:8085","message":"Starting RCNbuild API server"}
+{"level":"info","addr":"0.0.0.0:${API_PORT}","message":"Starting RCNbuild API server"}
 ```
+
+> **Note:** In all examples below, replace `${API_PORT}` with the port you configured in `.env` (default: `8081`).
 
 ### Health Check
 
 ```bash
-curl http://localhost:8085/health
+curl http://localhost:${API_PORT}/health
 ```
 
 Expected response:
@@ -244,7 +246,7 @@ Expected response:
 
 Open in browser:
 ```
-http://localhost:8085/api/auth/github
+http://localhost:${API_PORT}/api/auth/github
 ```
 
 This redirects to GitHub for authorization. After authorizing, you'll be redirected back to your `DASHBOARD_URL`.
@@ -260,7 +262,7 @@ After authenticating, test the `/me` endpoint:
 ```bash
 # Replace AUTH_TOKEN with your actual JWT from the cookie
 curl -H "Cookie: auth_token=YOUR_JWT_TOKEN" \
-  http://localhost:8085/api/auth/me
+  http://localhost:${API_PORT}/api/auth/me
 ```
 
 Expected response:
@@ -280,7 +282,7 @@ Expected response:
 
 ```bash
 curl -X POST -H "Cookie: auth_token=YOUR_JWT_TOKEN" \
-  http://localhost:8085/api/auth/logout
+  http://localhost:${API_PORT}/api/auth/logout
 ```
 
 Expected response:
@@ -291,7 +293,7 @@ Expected response:
 ### 4. Test Unauthorized Access
 
 ```bash
-curl http://localhost:8085/api/auth/me
+curl http://localhost:${API_PORT}/api/auth/me
 ```
 
 Expected response (401):
@@ -312,7 +314,7 @@ export AUTH="Cookie: auth_token=YOUR_JWT_TOKEN"
 ### 1. List GitHub Repositories
 
 ```bash
-curl -H "$AUTH" "http://localhost:8085/api/repos?page=1&page_size=10"
+curl -H "$AUTH" "http://localhost:${API_PORT}/api/repos?page=1&page_size=10"
 ```
 
 Expected response:
@@ -343,7 +345,7 @@ curl -X POST -H "$AUTH" -H "Content-Type: application/json" \
     "name": "My Awesome App",
     "branch": "main"
   }' \
-  http://localhost:8085/api/projects
+  http://localhost:${API_PORT}/api/projects
 ```
 
 Expected response (201):
@@ -374,7 +376,7 @@ Expected response (201):
 ### 3. List User's Projects
 
 ```bash
-curl -H "$AUTH" http://localhost:8085/api/projects
+curl -H "$AUTH" http://localhost:${API_PORT}/api/projects
 ```
 
 Expected response:
@@ -396,7 +398,7 @@ Expected response:
 ### 4. Get Project Details
 
 ```bash
-curl -H "$AUTH" http://localhost:8085/api/projects/PROJECT_UUID
+curl -H "$AUTH" http://localhost:${API_PORT}/api/projects/PROJECT_UUID
 ```
 
 Expected response:
@@ -416,13 +418,13 @@ curl -X PATCH -H "$AUTH" -H "Content-Type: application/json" \
     "port": 8000,
     "build_command": "npm install && npm run build:prod"
   }' \
-  http://localhost:8085/api/projects/PROJECT_UUID
+  http://localhost:${API_PORT}/api/projects/PROJECT_UUID
 ```
 
 ### 6. Delete a Project
 
 ```bash
-curl -X DELETE -H "$AUTH" http://localhost:8085/api/projects/PROJECT_UUID
+curl -X DELETE -H "$AUTH" http://localhost:${API_PORT}/api/projects/PROJECT_UUID
 ```
 
 Expected response:
@@ -435,7 +437,7 @@ Expected response:
 Try accessing another user's project:
 
 ```bash
-curl -H "$AUTH" http://localhost:8085/api/projects/OTHER_USER_PROJECT_UUID
+curl -H "$AUTH" http://localhost:${API_PORT}/api/projects/OTHER_USER_PROJECT_UUID
 ```
 
 Expected response (403):
@@ -455,7 +457,7 @@ curl -X POST -H "$AUTH" -H "Content-Type: application/json" \
     "key": "DATABASE_URL",
     "value": "postgres://user:pass@localhost:5432/db"
   }' \
-  http://localhost:8085/api/projects/PROJECT_UUID/env
+  http://localhost:${API_PORT}/api/projects/PROJECT_UUID/env
 ```
 
 Expected response (201):
@@ -473,7 +475,7 @@ Expected response (201):
 ### 2. List Environment Variables
 
 ```bash
-curl -H "$AUTH" http://localhost:8085/api/projects/PROJECT_UUID/env
+curl -H "$AUTH" http://localhost:${API_PORT}/api/projects/PROJECT_UUID/env
 ```
 
 Expected response:
@@ -500,14 +502,14 @@ curl -X POST -H "$AUTH" -H "Content-Type: application/json" \
     "key": "DATABASE_URL",
     "value": "postgres://user:newpass@localhost:5432/db"
   }' \
-  http://localhost:8085/api/projects/PROJECT_UUID/env
+  http://localhost:${API_PORT}/api/projects/PROJECT_UUID/env
 ```
 
 ### 4. Delete Environment Variable
 
 ```bash
 curl -X DELETE -H "$AUTH" \
-  http://localhost:8085/api/projects/PROJECT_UUID/env/DATABASE_URL
+  http://localhost:${API_PORT}/api/projects/PROJECT_UUID/env/DATABASE_URL
 ```
 
 Expected response:
@@ -523,7 +525,7 @@ curl -X POST -H "$AUTH" -H "Content-Type: application/json" \
     "key": "123_INVALID",
     "value": "test"
   }' \
-  http://localhost:8085/api/projects/PROJECT_UUID/env
+  http://localhost:${API_PORT}/api/projects/PROJECT_UUID/env
 ```
 
 Expected response (400):
@@ -552,7 +554,7 @@ You should see encrypted (base64-encoded) values, NOT plaintext.
 ### 1. Webhook Endpoint Exists
 
 ```bash
-curl -X POST http://localhost:8085/api/webhooks/github
+curl -X POST http://localhost:${API_PORT}/api/webhooks/github
 ```
 
 Expected response (400 - no body):
@@ -593,7 +595,7 @@ curl -X POST -H "Content-Type: application/json" \
   -H "X-GitHub-Event: push" \
   -H "X-GitHub-Delivery: test-123" \
   -d @push_event.json \
-  http://localhost:8085/api/webhooks/github
+  http://localhost:${API_PORT}/api/webhooks/github
 ```
 
 Expected responses:
@@ -728,7 +730,7 @@ Failed to exchange code for token
 listen tcp :8080: bind: address already in use
 ```
 
-**Solution:** Traefik uses 8080. Set `API_PORT=8085` in `.env`.
+**Solution:** Traefik uses 8080. Set `API_PORT=8081` (or any other port) in `.env`.
 
 ### Redis Connection Failed
 

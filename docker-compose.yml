@@ -61,19 +61,24 @@ services:
     image: traefik:v3.0
     container_name: rcnbuild-traefik
     command:
-      - "--api.insecure=true"                         # Enable dashboard (dev only!)
-      - "--providers.docker=true"                     # Read container labels
-      - "--providers.docker.exposedbydefault=false"   # Explicit opt-in
-      - "--providers.docker.network=rcnbuild-network" # Use our network
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=rcnbuild-network"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      # Let's Encrypt (will work when TLS_ENABLED=true in prod)
+      - "--certificatesresolvers.letsencrypt.acme.email=${TLS_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
       - "--log.level=${TRAEFIK_LOG_LEVEL:-DEBUG}"
     ports:
-      - "80:80"       # HTTP
-      - "443:443"     # HTTPS
-      - "8080:8080"   # Traefik Dashboard
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt_data:/letsencrypt
     networks:
       - rcnbuild-network
     restart: unless-stopped
@@ -142,3 +147,5 @@ volumes:
     name: rcnbuild-redis-data
   registry_data:
     name: rcnbuild-registry-data
+  letsencrypt_data:
+    name: rcnbuild-letsencrypt-data

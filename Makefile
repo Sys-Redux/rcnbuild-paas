@@ -21,7 +21,7 @@ RESET  := \033[0m
 # Docker configuration (use standard socket if Docker Desktop socket doesn't exist)
 DOCKER_COMPOSE := DOCKER_HOST=unix:///var/run/docker.sock docker compose
 
-.PHONY: help dev down logs ps ngrok-url api worker migrate-up migrate-down migrate-create migrate-status test lint build clean deps
+.PHONY: help dev down logs ps ngrok-url api worker migrate-up migrate-down migrate-create migrate-status test lint build clean deps deploy-prod
 
 # ===========================================
 # Help
@@ -32,6 +32,7 @@ help:
 	@echo ""
 	@echo "$(YELLOW)Infrastructure:$(RESET)"
 	@echo "  $(GREEN)make dev$(RESET)              - Start all infrastructure services (PostgreSQL, Redis, Traefik, Registry, ngrok)"
+	@echo "  $(GREEN)make deploy-prod$(RESET)      - Deploy to production with TLS (uses docker-compose.prod.yml)"
 	@echo "  $(GREEN)make down$(RESET)             - Stop all infrastructure services"
 	@echo "  $(GREEN)make logs$(RESET)             - Tail logs from all services"
 	@echo "  $(GREEN)make ps$(RESET)               - Show running containers"
@@ -98,6 +99,17 @@ down-clean:
 	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
 	@$(DOCKER_COMPOSE) down -v
 	@echo "$(GREEN)✓ Infrastructure stopped and data removed$(RESET)"
+
+# Deploy to production with TLS
+deploy-prod:
+	@echo "$(CYAN)Deploying to production...$(RESET)"
+	@$(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml up -d
+	@echo ""
+	@echo "$(GREEN)✓ Production deployment started!$(RESET)"
+	@echo ""
+	@echo "  Traefik Dashboard: https://traefik.$(BASE_DOMAIN)"
+	@echo "  TLS enabled:       $(TLS_ENABLED)"
+	@echo ""
 
 # Tail logs from all services
 logs:
